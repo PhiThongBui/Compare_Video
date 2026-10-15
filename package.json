@@ -1,0 +1,14 @@
+{
+  "name": "auto-compare-video",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "make": "node make-video.mjs",
+    "dashboard": "npm run dev --prefix dashboard"
+  },
+  "dependencies": {
+    "get-mp3-duration": "^1.0.0",
+    "msedge-tts": "^2.1.0"
+  }
+}

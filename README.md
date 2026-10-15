@@ -62,13 +62,13 @@ Toàn bộ hợp đồng layout/màu/font/motion nằm trong [`DESIGN.md`](DESIG
 
 | Token | Hex | Vai trò |
 | --- | --- | --- |
-| `--bg` | `#0D0A1A` | Nền chính (đen ánh tím) |
-| `--panel` | `#17122C` | Nền card minh họa |
-| `--panel-edge` | `#2B2350` | Viền card / robot |
-| `--fg` | `#F3F1FF` | Chữ chính |
-| `--fg-dim` | `#9089B0` | Chữ phụ / label |
-| `--accent-pink` | `#FF4FA3` | Từ khóa nổi bật, mắt/miệng robot |
-| `--accent-cyan` | `#37E6C4` | Tên chủ đề, đầu robot, đèn ngực |
+| `--bg` | `#081C15` | Nền chính (xanh rêu đen sân cỏ ban đêm) |
+| `--panel` | `#0F2D22` | Nền card minh họa (thảm cỏ đêm) |
+| `--panel-edge` | `#EBF8F2` | Viền card (vạch vôi trắng kẻ sân) |
+| `--fg` | `#FFFFFF` | Chữ chính (trắng sắc nét) |
+| `--fg-dim` | `#7FA896` | Chữ phụ / label (xanh phấn cỏ) |
+| `--accent-yellow` | `#FFD200` | Vàng thẻ phạt: tên chủ đề, VS badge, điểm nhấn |
+| `--accent-red` | `#FF334B` | Đỏ thẻ phạt: từ khóa nổi bật, verdict |
 
 ## 📁 Cấu trúc repo
 

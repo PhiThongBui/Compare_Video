@@ -1,0 +1,64 @@
+{
+  "slug": "ao-player-vs-ao-fan",
+  "category": "Công nghệ & Trang bị",
+  "channel": "Phía sau sân cỏ",
+  "title": "Áo bản Player vs Áo bản Fan",
+  "left": {
+    "name": "BẢN PLAYER",
+    "icon": "jersey-player"
+  },
+  "right": {
+    "name": "BẢN FAN",
+    "icon": "jersey-fan"
+  },
+  "script": [
+    {
+      "tts": "Bỏ hơn hai triệu mua áo đấu chính hãng,",
+      "caption": "Bỏ hơn hai triệu mua <span class=\"kw\" style=\"color: var(--accent-yellow)\">ÁO ĐẤU CHÍNH HÃNG,</span>"
+    },
+    {
+      "tts": "nhưng bạn có biết nó khác xa chiếc áo thần tượng đang mặc trên sân?",
+      "caption": "nhưng bạn có biết nó khác xa <span class=\"kw\" style=\"color: var(--accent-yellow)\">ÁO CẦU THỦ</span> trên sân?"
+    },
+    {
+      "tts": "Đâu là sự khác biệt thật sự?",
+      "caption": "Đâu là <span class=\"kw\">SỰ KHÁC BIỆT</span> thật sự?"
+    },
+    {
+      "tts": "Bản Fan thiết kế để phục vụ bạn mặc hàng ngày.",
+      "caption": "Bản Fan thiết kế để phục vụ bạn <span class=\"kw\">MẶC HÀNG NGÀY.</span>"
+    },
+    {
+      "tts": "Form áo suông rộng rãi, che bụng bia cực kỳ thoải mái.",
+      "caption": "Form suông rộng rãi, <span class=\"kw\">CHE BỤNG BIA</span> cực kỳ thoải mái."
+    },
+    {
+      "tts": "Logo đội bóng thêu chỉ nổi dày dặn, giặt máy bền bỉ nhiều năm.",
+      "caption": "Logo thêu chỉ nổi <span class=\"kw\">DÀY DẶN,</span> giặt máy bền bỉ nhiều năm."
+    },
+    {
+      "tts": "Còn bản Player là một vũ khí thi đấu đỉnh cao của cầu thủ.",
+      "caption": "Còn bản Player là <span class=\"kw\">VŨ KHÍ THI ĐẤU</span> của cầu thủ."
+    },
+    {
+      "tts": "Form bó chặt cơ bắp, chất vải siêu mỏng nhẹ như một tờ giấy.",
+      "caption": "Form bó chặt cơ bắp, chất vải <span class=\"kw\">SIÊU MỎNG NHẸ</span> như giấy."
+    },
+    {
+      "tts": "Mọi logo đều in ép nhiệt siêu mỏng để giảm tối đa từng gram trọng lượng.",
+      "caption": "Mọi logo đều in ép nhiệt <span class=\"kw\">SIÊU MỎNG</span> để giảm trọng lượng."
+    },
+    {
+      "tts": "Đổi lại, áo Player cực kỳ dễ rách, va chạm xước chỉ là vứt luôn.",
+      "caption": "Đổi lại, áo Player <span class=\"kw\">CỰC KỲ DỄ RÁCH,</span> xước chỉ là vứt luôn."
+    },
+    {
+      "tts": "Trong khi áo Fan thì bền bỉ nồi đồng cối đá theo năm tháng.",
+      "caption": "Trong khi áo Fan thì <span class=\"kw\">BỀN BỈ NỒI ĐỒNG CỐI ĐÁ</span> theo năm tháng."
+    },
+    {
+      "tts": "Bạn chọn bền bỉ tiết kiệm hay cảm giác nhẹ như bay của siêu sao?",
+      "caption": "Bạn chọn <span class=\"kw\">BỀN BỈ TIẾT KIỆM</span> hay <span class=\"kw\" style=\"color: var(--accent-yellow)\">ĐẲNG CẤP SIÊU SAO?</span>"
+    }
+  ]
+}

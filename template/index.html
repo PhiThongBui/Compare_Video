@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1080, height=1920">
+    <title>Áo bản Player vs Áo bản Fan</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      /* Be Vietnam Pro & JetBrains Mono explicit subsets for Vietnamese tone-marks */
+      @font-face {
+        font-family: "Be Vietnam Pro";
+        font-style: normal;
+        font-weight: 900;
+        font-display: swap;
+        src: url(https://fonts.gstatic.com/s/bevietnampro/v12/QdVMSTAyLFyeg_IDWvOJmVES_HS0Im86Rb0bcw.woff2) format("woff2");
+        unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+      }
+      @font-face {
+        font-family: "Be Vietnam Pro";
+        font-style: normal;
+        font-weight: 900;
+        font-display: swap;
+        src: url(https://fonts.gstatic.com/s/bevietnampro/v12/QdVMSTAyLFyeg_IDWvOJmVES_HS0Im81Rb0.woff2) format("woff2");
+        unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+      }
+      @font-face {
+        font-family: "JetBrains Mono";
+        font-style: normal;
+        font-weight: 700;
+        font-display: swap;
+        src: url(https://fonts.gstatic.com/s/jetbrainsmono/v24/tDbY2o-flEEny0FZhsfKu5WU4zr3E_BX0PnT8RD8L6tTNVOVgaY.woff2) format("woff2");
+        unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+      }
+      @font-face {
+        font-family: "JetBrains Mono";
+        font-style: normal;
+        font-weight: 700;
+        font-display: swap;
+        src: url(https://fonts.gstatic.com/s/jetbrainsmono/v24/tDbY2o-flEEny0FZhsfKu5WU4zr3E_BX0PnT8RD8L6tTOlOV.woff2) format("woff2");
+        unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+      }
+    </style>
+    <style>
+      :root {
+        --bg: #081c15;
+        --panel: #0f2d22;
+        --panel-edge: #ebf8f2;
+        --fg: #ffffff;
+        --fg-dim: #7fa896;
+        --accent-yellow: #ffd200;
+        --accent-red: #ff334b;
+        --accent-pink: var(--accent-red);
+        --accent-cyan: var(--accent-yellow);
+      }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        width: 1080px;
+        height: 1920px;
+        overflow: hidden;
+        background: var(--bg);
+        font-family: "Be Vietnam Pro", sans-serif;
+      }
+      #root {
+        position: relative;
+        width: 1080px;
+        height: 1920px;
+        overflow: hidden;
+        background: var(--bg);
+      }
+      .clip {
+        position: absolute;
+        inset: 0;
+      }
+
+      /* ---------- background decoratives ---------- */
+      .glow {
+        position: absolute;
+        border-radius: 50%;
+        filter: blur(60px);
+        pointer-events: none;
+      }
+      #glow-top {
+        width: 560px;
+        height: 560px;
+        left: 260px;
+        top: 120px;
+        background: radial-gradient(circle, rgba(255, 210, 0, 0.28) 0%, rgba(255, 210, 0, 0) 70%);
+      }
+      #glow-bottom {
+        width: 640px;
+        height: 640px;
+        left: 220px;
+        top: 1085px;
+        background: radial-gradient(circle, rgba(46, 213, 115, 0.22) 0%, rgba(46, 213, 115, 0) 70%);
+      }
+
+      /* ---------- top comparison zone (y 64-824) ---------- */
+      .card {
+        position: absolute;
+        top: 70px;
+        width: 400px;
+        height: 680px;
+        border-radius: 28px;
+        background: var(--panel);
+        border: 2px solid var(--panel-edge);
+        box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-end;
+        padding-bottom: 40px;
+        transform-origin: 50% 50%;
+        will-change: transform, opacity;
+      }
+      #card-left {
+        left: 120px;
+      }
+      #card-right {
+        left: 560px;
+      }
+      .card-icon {
+        position: relative;
+        width: 100%;
+        height: 480px;
+        display: grid;
+        place-items: center;
+      }
+      .card-label {
+        font-weight: 900;
+        font-size: 38px;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: var(--accent-yellow);
+        text-align: center;
+      }
+      .icon-container {
+        position: relative;
+        width: 280px;
+        height: 340px;
+        display: grid;
+        place-items: center;
+      }
+
+      /* VS badge */
+      #vs-badge {
+        position: absolute;
+        top: 355px;
+        left: 485px;
+        width: 110px;
+        height: 110px;
+        border-radius: 50%;
+        background: var(--accent-yellow);
+        display: grid;
+        place-items: center;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+        z-index: 5;
+        transform-origin: 50% 50%;
+        will-change: transform, opacity;
+      }
+      #vs-badge span {
+        font-weight: 900;
+        font-size: 34px;
+        color: var(--bg);
+        letter-spacing: 0.02em;
+      }
+
+      /* payoff verdict badges */
+      .verdict-badge {
+        position: absolute;
+        top: 40px;
+        width: 64px;
+        height: 64px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        font-weight: 900;
+        font-size: 32px;
+        z-index: 6;
+        transform-origin: 50% 50%;
+        opacity: 0;
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+      }
+      #verdict-left {
+        left: 389px;
+        background: var(--accent-yellow);
+        color: var(--bg);
+      }
+      #verdict-right {
+        left: 829px;
+        background: var(--panel-edge);
+        color: var(--bg);
+      }
+
+      /* ---------- middle caption zone (y 840-1300) ---------- */
+      #eyebrow {
+        position: absolute;
+        top: 838px;
+        left: 110px;
+        width: 860px;
+        text-align: center;
+        font-family: "JetBrains Mono", monospace;
+        font-weight: 700;
+        font-size: 22px;
+        letter-spacing: 0.14em;
+        color: var(--fg-dim);
+        opacity: 0;
+        text-transform: uppercase;
+      }
+      #caption-zone {
+        position: absolute;
+        top: 900px;
+        left: 110px;
+        width: 860px;
+        height: 380px;
+        display: grid;
+        place-items: center;
+      }
+      .caption-line {
+        position: absolute;
+        width: 100%;
+        text-align: center;
+        font-weight: 900;
+        font-size: 60px;
+        line-height: 1.25;
+        color: var(--fg);
+        opacity: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        will-change: transform, opacity;
+      }
+      .caption-line-text {
+        display: inline-block;
+        max-width: 860px;
+      }
+      .kw {
+        display: inline-block;
+        color: var(--accent-red);
+        margin: 0 6px;
+        transform-origin: 50% 50%;
+        will-change: transform;
+      }
+
+      /* ---------- bottom avatar MC zone (y 1280-1920) ---------- */
+      #avatar-host {
+        position: absolute;
+        left: 330px;
+        top: 1280px;
+        width: 420px;
+        height: 460px;
+        transform-origin: 50% 80%;
+        will-change: transform, opacity;
+      }
+      #avatar-body {
+        position: absolute;
+        left: 90px;
+        top: 200px;
+        width: 240px;
+        height: 260px;
+        background: var(--panel-edge);
+        border-radius: 28px;
+        transform-origin: 50% 100%;
+        will-change: transform;
+      }
+      #chest-light {
+        position: absolute;
+        top: 36px;
+        left: 102px;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: var(--accent-yellow);
+        box-shadow: 0 0 18px 4px rgba(255, 210, 0, 0.5);
+      }
+      #avatar-head {
+        position: absolute;
+        left: 105px;
+        top: 20px;
+        width: 210px;
+        height: 210px;
+        border-radius: 42px;
+        background: var(--accent-yellow);
+        transform-origin: 50% 100%;
+        will-change: transform;
+      }
+      #antenna-stem {
+        position: absolute;
+        top: -16px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 5px;
+        height: 18px;
+        border-radius: 3px;
+        background: var(--panel-edge);
+      }
+      #antenna-tip {
+        position: absolute;
+        top: -28px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        background: var(--accent-red);
+        box-shadow: 0 0 14px 4px rgba(255, 51, 75, 0.6);
+      }
+      #visor {
+        position: absolute;
+        top: 75px;
+        left: 25px;
+        width: 160px;
+        height: 70px;
+        border-radius: 16px;
+        background: #0a0714;
+      }
+      .eye {
+        position: absolute;
+        top: 100px;
+        width: 16px;
+        height: 16px;
+        border-radius: 4px;
+        background: var(--accent-red);
+      }
+      #eye-left {
+        left: 77px;
+      }
+      #eye-right {
+        left: 117px;
+      }
+      #mouth {
+        position: absolute;
+        top: 150px;
+        left: 83px;
+        width: 44px;
+        height: 10px;
+        border-radius: 4px;
+        background: var(--accent-red);
+        transform-origin: 50% 0%;
+        will-change: transform;
+      }
+      .arm {
+        position: absolute;
+        top: 210px;
+        width: 46px;
+        height: 190px;
+        border-radius: 12px;
+        background: var(--panel-edge);
+        transform-origin: 50% 0%;
+        will-change: transform;
+      }
+      #arm-left {
+        left: 60px;
+      }
+      #arm-right {
+        left: 314px;
+      }
+      .hand {
+        position: absolute;
+        bottom: -14px;
+        left: 3px;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: var(--accent-yellow);
+      }
+    </style>
+  </head>
+  <body>
+    <div data-hf-id="hf-root" id="root" data-composition-id="main" data-start="0" data-width="1080" data-height="1920" data-duration="60.7">
+      <section data-hf-id="hf-scene" id="scene" class="clip" data-start="0" data-duration="60.7" data-track-index="1">
+        <div data-hf-id="hf-glow-top" id="glow-top" class="glow"></div>
+        <div data-hf-id="hf-glow-bottom" id="glow-bottom" class="glow"></div>
+
+        <!-- top: comparison cards -->
+        <div data-hf-id="hf-card-left" id="card-left" class="card">
+          <div data-hf-id="hf-icon-left" class="card-icon">
+            <div class="icon-container">
+              
+    <svg width="240" height="280" viewBox="0 0 240 280" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M75 35 L40 70 L15 60 L35 130 L65 110 L65 260 L175 260 L175 110 L205 130 L225 60 L200 70 L165 35 C150 55 90 55 75 35 Z" fill="#143D2E" stroke="#FFD200" stroke-width="4" stroke-linejoin="round"/>
+      <g fill="#FFD200" opacity="0.35">
+        <circle cx="85" cy="140" r="3"/><circle cx="105" cy="140" r="3"/><circle cx="125" cy="140" r="3"/><circle cx="145" cy="140" r="3"/>
+        <circle cx="95" cy="160" r="3"/><circle cx="115" cy="160" r="3"/><circle cx="135" cy="160" r="3"/><circle cx="155" cy="160" r="3"/>
+        <circle cx="85" cy="180" r="3"/><circle cx="105" cy="180" r="3"/><circle cx="125" cy="180" r="3"/><circle cx="145" cy="180" r="3"/>
+        <circle cx="95" cy="200" r="3"/><circle cx="115" cy="200" r="3"/><circle cx="135" cy="200" r="3"/><circle cx="155" cy="200" r="3"/>
+        <circle cx="85" cy="220" r="3"/><circle cx="105" cy="220" r="3"/><circle cx="125" cy="220" r="3"/><circle cx="145" cy="220" r="3"/>
+      </g>
+      <rect x="85" y="80" width="28" height="34" rx="4" fill="#FFD200" opacity="0.9"/>
+      <path d="M140 85 C148 78 158 80 156 95 C154 105 142 112 135 115 C138 108 138 98 140 85 Z" fill="#FF334B"/>
+      <path d="M135 115 L155 90" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+            </div>
+          </div>
+          <div data-hf-id="hf-label-left" class="card-label">BẢN PLAYER</div>
+        </div>
+
+        <div data-hf-id="hf-card-right" id="card-right" class="card">
+          <div data-hf-id="hf-icon-right" class="card-icon">
+            <div class="icon-container">
+              
+    <svg width="240" height="280" viewBox="0 0 240 280" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M70 35 L30 75 L5 65 L28 140 L60 120 L55 260 L185 260 L180 120 L212 140 L235 65 L210 75 L170 35 C152 60 88 60 70 35 Z" fill="#143D2E" stroke="#EBF8F2" stroke-width="4" stroke-linejoin="round"/>
+      <path d="M85 85 L115 85 L115 115 C115 125 100 135 100 135 C100 135 85 125 85 115 Z" fill="#EBF8F2" stroke="#FFD200" stroke-width="3"/>
+      <path d="M92 95 L108 95 M100 95 L100 120" stroke="#081C15" stroke-width="3" stroke-linecap="round"/>
+      <path d="M60 250 L180 250" stroke="#EBF8F2" stroke-width="3" stroke-dasharray="6 4"/>
+      <path d="M30 130 L55 112" stroke="#EBF8F2" stroke-width="3" stroke-dasharray="6 4"/>
+      <path d="M210 130 L185 112" stroke="#EBF8F2" stroke-width="3" stroke-dasharray="6 4"/>
+      <circle cx="150" cy="105" r="16" fill="#081C15" stroke="#FFD200" stroke-width="3"/>
+      <path d="M144 105 L148 109 L157 100" stroke="#FFD200" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+            </div>
+          </div>
+          <div data-hf-id="hf-label-right" class="card-label" style="color: var(--panel-edge);">BẢN FAN</div>
+        </div>
+
+        <div data-hf-id="hf-vs-badge" id="vs-badge"><span>VS</span></div>
+        <div data-hf-id="hf-verdict-left" id="verdict-left" class="verdict-badge">⚡</div>
+        <div data-hf-id="hf-verdict-right" id="verdict-right" class="verdict-badge">🛡️</div>
+
+        <!-- middle: eyebrow + caption lines -->
+        <div data-hf-id="hf-eyebrow" id="eyebrow">Phía sau sân cỏ</div>
+        <div data-hf-id="hf-caption-zone" id="caption-zone">
+          <div class="caption-line" id="line-1"><span class="caption-line-text">Bỏ hơn hai triệu mua <span class="kw" style="color: var(--accent-yellow)">ÁO ĐẤU CHÍNH HÃNG,</span></span></div>
+          <div class="caption-line" id="line-2"><span class="caption-line-text">nhưng bạn có biết nó khác xa <span class="kw" style="color: var(--accent-yellow)">ÁO CẦU THỦ</span> trên sân?</span></div>
+          <div class="caption-line" id="line-3"><span class="caption-line-text">Đâu là <span class="kw">SỰ KHÁC BIỆT</span> thật sự?</span></div>
+          <div class="caption-line" id="line-4"><span class="caption-line-text">Bản Fan thiết kế để phục vụ bạn <span class="kw">MẶC HÀNG NGÀY.</span></span></div>
+          <div class="caption-line" id="line-5"><span class="caption-line-text">Form suông rộng rãi, <span class="kw">CHE BỤNG BIA</span> cực kỳ thoải mái.</span></div>
+          <div class="caption-line" id="line-6"><span class="caption-line-text">Logo thêu chỉ nổi <span class="kw">DÀY DẶN,</span> giặt máy bền bỉ nhiều năm.</span></div>
+          <div class="caption-line" id="line-7"><span class="caption-line-text">Còn bản Player là <span class="kw">VŨ KHÍ THI ĐẤU</span> của cầu thủ.</span></div>
+          <div class="caption-line" id="line-8"><span class="caption-line-text">Form bó chặt cơ bắp, chất vải <span class="kw">SIÊU MỎNG NHẸ</span> như giấy.</span></div>
+          <div class="caption-line" id="line-9"><span class="caption-line-text">Mọi logo đều in ép nhiệt <span class="kw">SIÊU MỎNG</span> để giảm trọng lượng.</span></div>
+          <div class="caption-line" id="line-10"><span class="caption-line-text">Đổi lại, áo Player <span class="kw">CỰC KỲ DỄ RÁCH,</span> xước chỉ là vứt luôn.</span></div>
+          <div class="caption-line" id="line-11"><span class="caption-line-text">Trong khi áo Fan thì <span class="kw">BỀN BỈ NỒI ĐỒNG CỐI ĐÁ</span> theo năm tháng.</span></div>
+          <div class="caption-line" id="line-12"><span class="caption-line-text">Bạn chọn <span class="kw">BỀN BỈ TIẾT KIỆM</span> hay <span class="kw" style="color: var(--accent-yellow)">ĐẲNG CẤP SIÊU SAO?</span></span></div>
+          <div class="caption-line" id="line-13"><span class="caption-line-text"></span></div>
+          <div class="caption-line" id="line-14"><span class="caption-line-text"></span></div>
+          <div class="caption-line" id="line-15"><span class="caption-line-text"></span></div>
+        </div>
+
+        <!-- bottom: avatar MC host character -->
+        <div data-hf-id="hf-avatar-host" id="avatar-host">
+          <div data-hf-id="hf-arm-left" class="arm" id="arm-left">
+            <div data-hf-id="hf-hand-left" class="hand"></div>
+          </div>
+          <div data-hf-id="hf-arm-right" class="arm" id="arm-right">
+            <div data-hf-id="hf-hand-right" class="hand"></div>
+          </div>
+          <div data-hf-id="hf-avatar-body" id="avatar-body">
+            <div data-hf-id="hf-chest-light" id="chest-light"></div>
+          </div>
+          <div data-hf-id="hf-avatar-head" id="avatar-head">
+            <div data-hf-id="hf-antenna-stem" id="antenna-stem"></div>
+            <div data-hf-id="hf-antenna-tip" id="antenna-tip"></div>
+            <div data-hf-id="hf-visor" id="visor"></div>
+            <div data-hf-id="hf-eye-left" class="eye" id="eye-left"></div>
+            <div data-hf-id="hf-eye-right" class="eye" id="eye-right"></div>
+            <div data-hf-id="hf-mouth" id="mouth"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- narration: audio clips, one per line -->
+      <audio data-hf-id="hf-vo-1" id="vo-1" src="assets/vo/line-1.mp3" data-start="0.55" data-duration="2.81" data-track-index="20"></audio>
+      <audio data-hf-id="hf-vo-2" id="vo-2" src="assets/vo/line-2.mp3" data-start="3.71" data-duration="3.89" data-track-index="20"></audio>
+      <audio data-hf-id="hf-vo-3" id="vo-3" src="assets/vo/line-3.mp3" data-start="8.05" data-duration="2.26" data-track-index="20"></audio>
+      <audio data-hf-id="hf-vo-4" id="vo-4" src="assets/vo/line-4.mp3" data-start="10.76" data-duration="3" data-track-index="20"></audio>
+      <audio data-hf-id="hf-vo-5" id="vo-5" src="assets/vo/line-5.mp3" data-start="14.06" data-duration="3.84" data-track-index="20"></audio>
+      <audio data-hf-id="hf-vo-6" id="vo-6" src="assets/vo/line-6.mp3" data-start="18.2" data-duration="4.18" data-track-index="20"></audio>
+      <audio data-hf-id="hf-vo-7" id="vo-7" src="assets/vo/line-7.mp3" data-start="22.83" data-duration="3.94" data-track-index="20"></audio>
+      <audio data-hf-id="hf-vo-8" id="vo-8" src="assets/vo/line-8.mp3" data-start="27.07" data-duration="4.03" data-track-index="20"></audio>
+      <audio data-hf-id="hf-vo-9" id="vo-9" src="assets/vo/line-9.mp3" data-start="31.4" data-duration="4.54" data-track-index="20"></audio>
+      <audio data-hf-id="hf-vo-10" id="vo-10" src="assets/vo/line-10.mp3" data-start="36.39" data-duration="4.7" data-track-index="20"></audio>
+      <audio data-hf-id="hf-vo-11" id="vo-11" src="assets/vo/line-11.mp3" data-start="41.44" data-duration="3.7" data-track-index="20"></audio>
+      <audio data-hf-id="hf-vo-12" id="vo-12" src="assets/vo/line-12.mp3" data-start="45.59" data-duration="3.86" data-track-index="20"></audio>
+      <audio data-hf-id="hf-vo-13" id="vo-13" src="assets/vo/line-13.mp3" data-start="49.8" data-duration="3" data-track-index="20"></audio>
+      <audio data-hf-id="hf-vo-14" id="vo-14" src="assets/vo/line-14.mp3" data-start="53.15" data-duration="3" data-track-index="20"></audio>
+      <audio data-hf-id="hf-vo-15" id="vo-15" src="assets/vo/line-15.mp3" data-start="56.5" data-duration="3" data-track-index="20"></audio>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+
+      // ---------- entrance (0.0 - 0.75s) ----------
+      tl.fromTo("#card-left", { scale: 0, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.5, ease: "power3.out" }, 0.0);
+      tl.fromTo("#card-right", { scale: 0, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.5, ease: "power3.out" }, 0.15);
+      tl.fromTo("#vs-badge", { scale: 0, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.4, ease: "power3.out" }, 0.45);
+      tl.fromTo("#avatar-host", { scale: 0.85, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.5, ease: "power3.out" }, 0.1);
+      tl.fromTo("#eyebrow", { y: 12, opacity: 0 }, { y: 0, opacity: 1, duration: 0.4, ease: "power3.out" }, 0.15);
+
+      // ---------- caption line helper ----------
+      function showLine(id, inAt, outAt) {
+        tl.fromTo(id, { y: 24, opacity: 0 }, { y: 0, opacity: 1, duration: 0.35, ease: "power3.out" }, inAt);
+        if (outAt != null) {
+          tl.to(id, { y: -16, opacity: 0, duration: 0.2, ease: "power2.in" }, outAt);
+        }
+        const kws = document.querySelectorAll(id + " .kw");
+        kws.forEach((el, i) => {
+          tl.fromTo(
+            el,
+            { scale: 1 },
+            { scale: 1.15, duration: 0.14, ease: "power2.out", yoyo: true, repeat: 1 },
+            inAt + 0.2 + i * 0.08,
+          );
+        });
+      }
+
+      // ---------- avatar pose helper ----------
+      function pose(leftDeg, rightDeg, at, dur) {
+        tl.to("#arm-left", { rotation: leftDeg, duration: dur, ease: "power3.out" }, at);
+        tl.to("#arm-right", { rotation: rightDeg, duration: dur, ease: "power3.out" }, at);
+      }
+      function headTilt(deg, at, dur) {
+        tl.to("#avatar-head", { rotation: deg, duration: dur, ease: "power3.out" }, at);
+      }
+      function talk(startAt, endAt) {
+        const cycle = 0.22;
+        const reps = Math.max(0, Math.floor((endAt - startAt) / cycle) - 1);
+        tl.to(
+          "#mouth",
+          { scaleY: 0.4, duration: cycle / 2, ease: "power1.inOut", yoyo: true, repeat: reps },
+          startAt,
+        );
+        tl.set("#mouth", { scaleY: 1 }, endAt);
+      }
+
+      // Timing injected from audio assets
+      const VO = { "1": {         "start": 0.55,         "dur": 2.81 }, "2": {         "start": 3.71,         "dur": 3.89 }, "3": {         "start": 8.05,         "dur": 2.26 }, "4": {         "start": 10.76,         "dur": 3 }, "5": {         "start": 14.06,         "dur": 3.84 }, "6": {         "start": 18.2,         "dur": 4.18 }, "7": {         "start": 22.83,         "dur": 3.94 }, "8": {         "start": 27.07,         "dur": 4.03 }, "9": {         "start": 31.4,         "dur": 4.54 }, "10": {         "start": 36.39,         "dur": 4.7 }, "11": {         "start": 41.44,         "dur": 3.7 }, "12": {         "start": 45.59,         "dur": 3.86 }, "13": {         "start": 49.8,         "dur": 3 }, "14": {         "start": 53.15,         "dur": 3 }, "15": {         "start": 56.5,         "dur": 3 }
+};
+      const capOut = (n) => VO[n].start + VO[n].dur + 0.2;
+
+      // BEAT 1: HOOK (line 1-2) — point left then point right
+      pose(115, -8, VO[1].start, 0.3);
+      showLine("#line-1", VO[1].start, capOut(1));
+      talk(VO[1].start, VO[1].start + VO[1].dur);
+
+      pose(8, -115, VO[2].start, 0.3);
+      showLine("#line-2", VO[2].start, capOut(2));
+      talk(VO[2].start, VO[2].start + VO[2].dur);
+
+      // BEAT 2: NÚT THẮT (line 3) — shrug + headTilt
+      pose(55, -55, VO[3].start, 0.35);
+      headTilt(6, VO[3].start, 0.35);
+      showLine("#line-3", VO[3].start, capOut(3));
+      talk(VO[3].start, VO[3].start + VO[3].dur);
+      headTilt(0, capOut(3), 0.3);
+
+      // BEAT 3: GIẢI A (line 4-5-6) — focus card-left
+      tl.to("#card-left", { scale: 1.05, opacity: 1, duration: 0.4, ease: "power2.out" }, VO[4].start);
+      tl.to("#card-right", { scale: 0.96, opacity: 0.55, duration: 0.4, ease: "power2.out" }, VO[4].start);
+      pose(85, -8, VO[4].start, 0.3);
+      showLine("#line-4", VO[4].start, capOut(4));
+      talk(VO[4].start, VO[4].start + VO[4].dur);
+
+      pose(75, -15, VO[5].start, 0.3);
+      showLine("#line-5", VO[5].start, capOut(5));
+      talk(VO[5].start, VO[5].start + VO[5].dur);
+
+      pose(90, -8, VO[6].start, 0.3);
+      showLine("#line-6", VO[6].start, capOut(6));
+      talk(VO[6].start, VO[6].start + VO[6].dur);
+
+      // BEAT 4: GIẢI B (line 7-8-9) — focus card-right
+      tl.to("#card-right", { scale: 1.05, opacity: 1, duration: 0.4, ease: "power2.out" }, VO[7].start);
+      tl.to("#card-left", { scale: 0.96, opacity: 0.55, duration: 0.4, ease: "power2.out" }, VO[7].start);
+      pose(8, -85, VO[7].start, 0.3);
+      showLine("#line-7", VO[7].start, capOut(7));
+      talk(VO[7].start, VO[7].start + VO[7].dur);
+
+      pose(15, -75, VO[8].start, 0.3);
+      showLine("#line-8", VO[8].start, capOut(8));
+      talk(VO[8].start, VO[8].start + VO[8].dur);
+
+      pose(8, -90, VO[9].start, 0.3);
+      showLine("#line-9", VO[9].start, capOut(9));
+      talk(VO[9].start, VO[9].start + VO[9].dur);
+
+      // BEAT 5: SO SÁNH TRỰC TIẾP (line 10-11) — both cards scale: 1, side-by-side
+      tl.to("#card-left", { scale: 1, opacity: 1, duration: 0.4, ease: "power2.out" }, VO[10].start);
+      tl.to("#card-right", { scale: 1, opacity: 1, duration: 0.4, ease: "power2.out" }, VO[10].start);
+      pose(45, -15, VO[10].start, 0.3);
+      showLine("#line-10", VO[10].start, capOut(10));
+      talk(VO[10].start, VO[10].start + VO[10].dur);
+
+      pose(15, -45, VO[11].start, 0.3);
+      showLine("#line-11", VO[11].start, capOut(11));
+      talk(VO[11].start, VO[11].start + VO[11].dur);
+
+      // BEAT 6: PAYOFF (line 12) — neutral hold, punch body, verdict pop
+      pose(8, -8, VO[12].start, 0.3);
+      tl.fromTo(
+        "#avatar-body",
+        { scale: 1 },
+        { scale: 1.04, duration: 0.3, ease: "power2.out", yoyo: true, repeat: 1 },
+        VO[12].start,
+      );
+      tl.fromTo("#verdict-left", { scale: 0, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.4, ease: "power3.out" }, VO[12].start + 0.15);
+      tl.fromTo("#verdict-right", { scale: 0, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.4, ease: "power3.out" }, VO[12].start + 0.25);
+      showLine("#line-12", VO[12].start, null);
+      talk(VO[12].start, VO[12].start + VO[12].dur);
+
+      // ---------- ambient background glows ----------
+      const ROOT_DURATION = 60.7;
+      const glowCycle = 3.2;
+      const glowReps = Math.max(0, Math.floor(ROOT_DURATION / glowCycle) - 1);
+      tl.fromTo("#glow-top", { opacity: 0.6 }, { opacity: 1, duration: glowCycle / 2, ease: "sine.inOut", yoyo: true, repeat: glowReps }, 0);
+      tl.fromTo("#glow-bottom", { opacity: 1 }, { opacity: 0.6, duration: glowCycle / 2, ease: "sine.inOut", yoyo: true, repeat: glowReps }, 0);
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

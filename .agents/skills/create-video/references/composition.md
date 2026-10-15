@@ -26,15 +26,15 @@ làm mất glyph dấu tiếng Việt dựng sẵn (U+1EA0-1EF9) → chữ vỡ 
 thì bị lint cảnh báo `google_fonts_import`. Để trống `font-family` mà không `@font-face` thì
 âm thầm fallback về embed thiếu subset. Xem `DESIGN.md` § Typography.
 
-## Bảng màu keyword — dùng đúng token
+## Bảng màu keyword — dùng đúng token (DNA Bóng Đá: Vàng / Đỏ Thẻ Phạt)
 
 | Vai trò | Cách viết |
 |---|---|
-| Từ khoá "sự khác nhau" (mặc định của `.kw`) | `<span class="kw">TỪ KHOÁ</span>` → tự nhận `--accent-pink` (`#ff4fa3`) |
-| Tên khái niệm ở 2 dòng hook (line-1, line-2) | `<span class="kw" style="color: var(--accent-cyan)">DEV</span>` (`#37e6c4`) |
+| Từ khoá "sự khác nhau" (mặc định của `.kw`) | `<span class="kw">TỪ KHOÁ</span>` → nhận `--accent-red` (`#ff334b` - Đỏ Thẻ Phạt) |
+| Tên khái niệm ở 2 dòng hook (line-1, line-2) | `<span class="kw" style="color: var(--accent-yellow)">A / B</span>` (`#ffd200` - Vàng Thẻ Phạt) |
 
-Quy tắc màu là một phần của việc dạy người xem nhìn vào đâu: **hồng = điểm khác biệt,
-lục lam = tên khái niệm**. Không đảo, không thêm màu thứ ba.
+Quy tắc màu là một phần của việc định hướng mắt người xem: **Đỏ = điểm khác biệt / bản chất,
+Vàng = tên khái niệm / chủ đề**. Không đảo, không thêm màu thứ ba.
 
 ## Cấu trúc mỗi dòng caption — lớp bọc là BẮT BUỘC
 

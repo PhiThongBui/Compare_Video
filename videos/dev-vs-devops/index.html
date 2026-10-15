@@ -45,13 +45,15 @@
     </style>
     <style>
       :root {
-        --bg: #0d0a1a;
-        --panel: #17122c;
-        --panel-edge: #2b2350;
-        --fg: #f3f1ff;
-        --fg-dim: #9089b0;
-        --accent-pink: #ff4fa3;
-        --accent-cyan: #37e6c4;
+        --bg: #081c15;
+        --panel: #0f2d22;
+        --panel-edge: #ebf8f2;
+        --fg: #ffffff;
+        --fg-dim: #7fa896;
+        --accent-yellow: #ffd200;
+        --accent-red: #ff334b;
+        --accent-pink: var(--accent-red);
+        --accent-cyan: var(--accent-yellow);
       }
       * {
         margin: 0;
@@ -90,14 +92,14 @@
         height: 560px;
         left: 260px;
         top: 120px;
-        background: radial-gradient(circle, rgba(255, 79, 163, 0.35) 0%, rgba(255, 79, 163, 0) 70%);
+        background: radial-gradient(circle, rgba(255, 210, 0, 0.28) 0%, rgba(255, 210, 0, 0) 70%);
       }
       #glow-bottom {
         width: 640px;
         height: 640px;
         left: 220px;
         top: 1085px;
-        background: radial-gradient(circle, rgba(55, 230, 196, 0.28) 0%, rgba(55, 230, 196, 0) 70%);
+        background: radial-gradient(circle, rgba(46, 213, 115, 0.22) 0%, rgba(46, 213, 115, 0) 70%);
       }
 
       /* ---------- top comparison zone (y 64-824) ---------- */
@@ -108,7 +110,8 @@
         height: 680px;
         border-radius: 28px;
         background: var(--panel);
-        border: 1px solid var(--panel-edge);
+        border: 2px solid var(--panel-edge);
+        box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45);
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -223,7 +226,7 @@
         width: 110px;
         height: 110px;
         border-radius: 50%;
-        background: var(--accent-pink);
+        background: var(--accent-yellow);
         display: grid;
         place-items: center;
         box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
@@ -256,13 +259,13 @@
       }
       #verdict-left {
         left: 389px;
-        background: var(--accent-cyan);
-        color: #2a1e00;
+        background: var(--accent-yellow);
+        color: var(--bg);
       }
       #verdict-right {
         left: 829px;
         background: var(--panel-edge);
-        color: var(--fg);
+        color: var(--bg);
       }
 
       /* ---------- middle caption zone (y 840-1300) ---------- */
@@ -343,8 +346,8 @@
         width: 36px;
         height: 36px;
         border-radius: 50%;
-        background: var(--accent-cyan);
-        box-shadow: 0 0 18px 4px rgba(55, 230, 196, 0.5);
+        background: var(--accent-yellow);
+        box-shadow: 0 0 18px 4px rgba(255, 210, 0, 0.5);
       }
       #avatar-head {
         position: absolute;
@@ -375,8 +378,8 @@
         width: 14px;
         height: 14px;
         border-radius: 50%;
-        background: var(--accent-pink);
-        box-shadow: 0 0 14px 4px rgba(255, 79, 163, 0.6);
+        background: var(--accent-red);
+        box-shadow: 0 0 14px 4px rgba(255, 51, 75, 0.6);
       }
       #visor {
         position: absolute;
@@ -474,7 +477,7 @@
         <div data-hf-id="hf-98lu" id="verdict-right" class="verdict-badge">✕</div>
 
         <!-- middle: captions -->
-        <div data-hf-id="hf-n7e7" id="eyebrow">Cường IT</div>
+        <div data-hf-id="hf-n7e7" id="eyebrow">Phía sau sân cỏ</div>
         <div data-hf-id="hf-7yco" id="caption-zone">
           <div data-hf-id="hf-ltvs" class="caption-line" id="line-1"><span data-hf-id="hf-xpmn" class="caption-line-text">Đây là <span data-hf-id="hf-mhqo" class="kw" style="color: var(--accent-cyan)">DEV</span></span></div>
           <div data-hf-id="hf-bkjz" class="caption-line" id="line-2"><span data-hf-id="hf-25tr" class="caption-line-text">Đây là <span data-hf-id="hf-8hi4" class="kw" style="color: var(--accent-cyan)">DEVOPS</span></span></div>

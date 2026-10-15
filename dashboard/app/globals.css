@@ -1,0 +1,68 @@
+@import "tailwindcss";
+
+:root {
+  --font-sans: var(--font-be-vietnam), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --bg-pitch: #081C15;
+  --bg-pitch-dark: #05130E;
+  --panel-bg: rgba(14, 41, 30, 0.75);
+  --panel-edge: #EBF8F2;
+  --accent-yellow: #FFD200;
+  --accent-red: #FF334B;
+  --grass-green: #10B981;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--bg-pitch-dark);
+  background-image: 
+    radial-gradient(circle at 50% 0%, rgba(16, 185, 129, 0.12), transparent 45%),
+    linear-gradient(180deg, rgba(8, 28, 21, 0.9) 0%, rgba(5, 19, 14, 1) 100%);
+  background-attachment: fixed;
+  color: #EBF8F2;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(5, 19, 14, 0.8);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(235, 248, 242, 0.2);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 210, 0, 0.5);
+}
+
+/* Caption Keyword Highlights */
+.kw {
+  font-weight: 800;
+  color: #FFFFFF;
+  text-shadow: 0 0 12px rgba(255, 210, 0, 0.4);
+}
+
+.kw-yellow {
+  color: var(--accent-yellow) !important;
+  font-weight: 800;
+  text-shadow: 0 0 14px rgba(255, 210, 0, 0.6);
+}
+
+.kw-red {
+  color: var(--accent-red) !important;
+  font-weight: 800;
+  text-shadow: 0 0 14px rgba(255, 51, 75, 0.6);
+}
+
+/* Football Grass Stripe Effect */
+.pitch-stripes {
+  background-image: repeating-linear-gradient(
+    90deg,
+    rgba(16, 185, 129, 0.03) 0px,
+    rgba(16, 185, 129, 0.03) 40px,
+    transparent 40px,
+    transparent 80px
+  );
+}

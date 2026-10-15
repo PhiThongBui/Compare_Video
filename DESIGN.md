@@ -1,26 +1,27 @@
-# DESIGN.md — "So Sánh Kiến Thức" template
+# DESIGN.md — "Phía Sau Sân Cỏ" comparison template
 
-**Concept angle:** A fast-paced myth-busting showdown — two icons face off in a top-frame
-split, a bold pink-accented caption calls the verdict line by line, and a flat 2D host
-physically points the answer home. Motion reads as a game-show buzzer round, not a lecture.
+**Concept angle:** A fast-paced football showdown & backstage myth-busting — two entities face off in a top-frame
+split (stadium turf background, chalk line borders), high-contrast yellow & red card-accented captions call the
+verdict line by line, and a host physically points the answer home. Motion reads as a thrilling football match debate.
 
-## Colors
+## Colors (Football Stadium & Penalty Cards DNA)
 
-| Token           | Value     | Use                                              |
-| --------------- | --------- | ------------------------------------------------- |
-| `--bg`          | `#0D0A1A` | Root background (deep indigo-black)              |
-| `--panel`       | `#17122C` | Image card surface                               |
-| `--panel-edge`  | `#2B2350` | Card border / hairline                            |
-| `--fg`          | `#F3F1FF` | Primary text                                      |
-| `--fg-dim`      | `#9089B0` | Secondary / inactive text                         |
-| `--accent-pink` | `#FF4FA3` | Keyword highlight — the "difference" word         |
-| `--accent-cyan` | `#37E6C4` | Topic names, VS badge accent, avatar accent        |
+| Token             | Value     | Use                                                            |
+| ----------------- | --------- | --------------------------------------------------------------- |
+| `--bg`            | `#081C15` | Root background (deep midnight stadium pitch - xanh rêu đen sâu) |
+| `--panel`         | `#0F2D22` | Card surface (dark grass panel - thảm cỏ đêm tối)               |
+| `--panel-edge`    | `#EBF8F2` | Card border & lines (chalk line white - vạch vôi kẻ sân)        |
+| `--fg`            | `#FFFFFF` | Primary text (crisp white - chữ trắng sắc nét)                  |
+| `--fg-dim`        | `#7FA896` | Secondary / inactive text (chalk dust green - xanh phấn mờ)     |
+| `--accent-yellow` | `#FFD200` | Yellow card: topic names, VS badge, concept identity            |
+| `--accent-red`    | `#FF334B` | Red card: keyword highlight — the "difference" word, verdict   |
+| `--accent-cyan`   | `#FFD200` | Legacy alias -> `--accent-yellow`                              |
+| `--accent-pink`   | `#FF334B` | Legacy alias -> `--accent-red`                                 |
 
-Dark, saturated background: tech/knowledge content stays legible, and the deep indigo bed makes
-the pink keyword pop hardest against the cool cyan identity color. Two accent hues sit opposite
-on the wheel (pink for emphasis, cyan for identity) — chosen as a deliberate departure from the
-series' original red/gold palette so this generation of videos reads as visually distinct from
-earlier public uploads of the same topics.
+Deep midnight pitch background: football/sports content stays clean, immersive, and legible.
+The crisp chalk-white lines structure the cards, while the yellow and red penalty card accents provide
+immediate, intuitive visual cues: Yellow represents concept identity and matchups, while Red delivers
+the high-stakes verdict and decisive differences.
 
 ## Typography
 
@@ -83,10 +84,10 @@ with no `top`/`left` adapt automatically.
 
 ## Background layer
 
-- Soft `--accent-pink` radial glow behind the VS badge, low opacity, gentle breathing pulse
+- Soft `--accent-yellow` radial glow behind the VS badge, low opacity, gentle breathing pulse
   (finite repeat).
-- Ghost eyebrow word ("SO SÁNH") oversized at 4% opacity behind the caption zone, static.
-- Soft `--accent-cyan` glow behind the avatar's head, gentle breathing pulse, phase-opposed
+- Ghost eyebrow word ("PHÍA SAU SÂN CỎ") oversized at 4% opacity behind the caption zone, static.
+- Soft stadium green glow behind the avatar's head, gentle breathing pulse, phase-opposed
   to the top glow (per `sine-wave-loop` phase-opposition rule).
 
 ## Motion
@@ -127,8 +128,7 @@ all beats are internal phase changes on one timeline.
 
 - Do keep the 3-zone layout byte-for-byte identical across topics — only text, image
   content, and the two card images change when this becomes a real template instance.
-- Do keep keyword-pink reserved for the *difference*, not the topic names (topic names use
-  cyan) — the color coding itself teaches the viewer where to look.
+- Do keep keyword-red reserved for the *difference*, and yellow for the topic names / VS badge — the penalty card color coding itself teaches the viewer where to look.
 - Do keep every zone's content within the safe zone (above) — centered on x=540 with symmetric
   `SAFE_MARGIN` on both sides, avatar head clear of `SAFE_BOTTOM`.
 - Don't add a 4th zone or reorder the three zones — the format's recognizability depends on

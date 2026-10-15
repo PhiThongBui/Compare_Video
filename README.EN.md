@@ -63,13 +63,13 @@ series must follow this exact color palette and 3-zone structure to keep the ser
 
 | Token | Hex | Role |
 | --- | --- | --- |
-| `--bg` | `#0D0A1A` | Main background (purple-tinted black) |
-| `--panel` | `#17122C` | Illustration card background |
-| `--panel-edge` | `#2B2350` | Card / robot border |
-| `--fg` | `#F3F1FF` | Primary text |
-| `--fg-dim` | `#9089B0` | Secondary text / labels |
-| `--accent-pink` | `#FF4FA3` | Highlighted keywords, robot eyes/mouth |
-| `--accent-cyan` | `#37E6C4` | Topic name, robot head, chest light |
+| `--bg` | `#081C15` | Main background (midnight stadium pitch) |
+| `--panel` | `#0F2D22` | Illustration card background (dark grass panel) |
+| `--panel-edge` | `#EBF8F2` | Card border (chalk line white) |
+| `--fg` | `#FFFFFF` | Primary text (crisp white) |
+| `--fg-dim` | `#7FA896` | Secondary text / labels (chalk dust green) |
+| `--accent-yellow` | `#FFD200` | Yellow card: topic names, VS badge, concept identity |
+| `--accent-red` | `#FF334B` | Red card: keyword highlight, difference verdict |
 
 ## 📁 Repo Structure
 
