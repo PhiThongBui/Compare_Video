@@ -2,6 +2,8 @@
   "slug": "ao-player-vs-ao-fan",
   "category": "Công nghệ & Trang bị",
   "channel": "Phía sau sân cỏ",
+  "provider": "vieneu",
+  "voice": "Hải Đăng",
   "title": "Áo bản Player vs Áo bản Fan",
   "left": {
     "name": "BẢN PLAYER",
@@ -9,11 +11,11 @@
   },
   "right": {
     "name": "BẢN FAN",
-    "icon": "jersey-fan"
+    "icon": "jersey-player"
   },
   "script": [
     {
-      "tts": "Bỏ hơn hai triệu mua áo đấu chính hãng,",
+      "tts": "Bỏ hơn hai triệu mua ÁO ĐẤU CHÍNH HÃNG,",
       "caption": "Bỏ hơn hai triệu mua <span class=\"kw\" style=\"color: var(--accent-yellow)\">ÁO ĐẤU CHÍNH HÃNG,</span>"
     },
     {
@@ -57,7 +59,7 @@
       "caption": "Trong khi áo Fan thì <span class=\"kw\">BỀN BỈ NỒI ĐỒNG CỐI ĐÁ</span> theo năm tháng."
     },
     {
-      "tts": "Bạn chọn bền bỉ tiết kiệm hay cảm giác nhẹ như bay của siêu sao?",
+      "tts": "Bạn chọn BỀN BỈ TIẾT KIỆM hay ĐẲNG CẤP SIÊU SAO? [hắng giọng]",
       "caption": "Bạn chọn <span class=\"kw\">BỀN BỈ TIẾT KIỆM</span> hay <span class=\"kw\" style=\"color: var(--accent-yellow)\">ĐẲNG CẤP SIÊU SAO?</span>"
     }
   ]

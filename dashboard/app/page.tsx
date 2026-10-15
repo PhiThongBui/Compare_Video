@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import Link from "next/link";
 import {
   Play,
   Pause,
@@ -19,19 +20,20 @@ import {
   Trash2,
   Zap,
   Search,
-  SlidersHorizontal,
-  Calendar,
   HardDrive,
-  Maximize2,
   X,
   ArrowLeft,
-  Share2,
   Eye,
+  Check,
+  Code,
+  RotateCcw,
+  Volume2,
+  VolumeX,
 } from "lucide-react";
 
 interface ScriptLine {
   tts: string;
-  caption: string;
+  caption: string; // Internal standard format with <span class="kw"...>
 }
 
 interface VideoItem {
@@ -52,12 +54,16 @@ interface TemplateItem {
     slug: string;
     category?: string;
     channel?: string;
+    provider?: string;
+    voice?: string;
     title: string;
     left: { name: string; icon: string };
     right: { name: string; icon: string };
     script: Array<{ tts?: string; caption?: string } | string>;
   };
 }
+
+const STORAGE_KEY = "pssc_video_form_draft_v2";
 
 const ICON_OPTIONS = [
   { id: "jersey-player", name: "Áo thi đấu Player (Cầu thủ)", emoji: "🎽" },
@@ -76,6 +82,44 @@ const CATEGORIES = [
   "Tài chính & Chuyển nhượng",
   "Hậu trường & Bí mật sân cỏ",
   "Luật chơi & Tranh cãi",
+];
+
+interface VoiceOption {
+  id: string;
+  provider: "vieneu" | "edge";
+  voice: string;
+  name: string;
+  badge: string;
+}
+
+const VOICE_OPTIONS: VoiceOption[] = [
+  { id: "vieneu:Hải Đăng", provider: "vieneu", voice: "Hải Đăng", name: "VieNeu — Hải Đăng (Nam, Bắc, Tự nhiên, 48kHz)", badge: "Mặc định ⭐" },
+  { id: "vieneu:Adam bựa", provider: "vieneu", voice: "Adam bựa", name: "VieNeu — Adam bựa (Nam, Bắc, Tự nhiên, Hài hước)", badge: "Hot ⭐" },
+  { id: "vieneu:Trúc Ly", provider: "vieneu", voice: "Trúc Ly", name: "VieNeu — Trúc Ly (Nữ, Bắc, Tự nhiên, Truyền cảm)", badge: "Hot ⭐" },
+  { id: "vieneu:Thiện Minh", provider: "vieneu", voice: "Thiện Minh", name: "VieNeu — Thiện Minh (Nam, Bắc, Kể chuyện)", badge: "Kể chuyện ⭐" },
+  { id: "vieneu:Mai Anh", provider: "vieneu", voice: "Mai Anh", name: "VieNeu — Mai Anh (Nữ, Bắc, Tin tức)", badge: "Tin tức ⭐" },
+  { id: "vieneu:Thùy Dung", provider: "vieneu", voice: "Thùy Dung", name: "VieNeu — Thùy Dung (Nữ, Nam, Tin tức)", badge: "Miền Nam ⭐" },
+  { id: "vieneu:Thiền Tâm Đức", provider: "vieneu", voice: "Thiền Tâm Đức", name: "VieNeu — Thiền Tâm Đức (Nam, Bắc, Kể chuyện)", badge: "Kể chuyện" },
+  { id: "vieneu:Ngọc Huyền", provider: "vieneu", voice: "Ngọc Huyền", name: "VieNeu — Ngọc Huyền (Nữ, Bắc, Tự nhiên)", badge: "Tự nhiên" },
+  { id: "vieneu:Quang Sơn", provider: "vieneu", voice: "Quang Sơn", name: "VieNeu — Quang Sơn (Nam, Trung, Tự nhiên)", badge: "Miền Trung" },
+  { id: "vieneu:Ngọc Trân", provider: "vieneu", voice: "Ngọc Trân", name: "VieNeu — Ngọc Trân (Nữ, Trung, Tự nhiên)", badge: "Miền Trung" },
+  { id: "vieneu:Minh Đức", provider: "vieneu", voice: "Minh Đức", name: "VieNeu — Minh Đức (Nam, Bắc, Tin tức)", badge: "Tin tức" },
+  { id: "vieneu:Phạm Tuyên", provider: "vieneu", voice: "Phạm Tuyên", name: "VieNeu — Phạm Tuyên (Nam, Bắc, Tự nhiên)", badge: "Tự nhiên" },
+  { id: "vieneu:Thái Sơn", provider: "vieneu", voice: "Thái Sơn", name: "VieNeu — Thái Sơn (Nam, Nam, Kể chuyện)", badge: "Miền Nam" },
+  { id: "vieneu:Xuân Vĩnh", provider: "vieneu", voice: "Xuân Vĩnh", name: "VieNeu — Xuân Vĩnh (Nam, Bắc, Tự nhiên)", badge: "Tự nhiên" },
+  { id: "vieneu:Thanh Bình", provider: "vieneu", voice: "Thanh Bình", name: "VieNeu — Thanh Bình (Nam, Bắc, Kể chuyện)", badge: "Kể chuyện" },
+  { id: "vieneu:Ngọc Linh", provider: "vieneu", voice: "Ngọc Linh", name: "VieNeu — Ngọc Linh (Nữ, Bắc, Kể chuyện)", badge: "Kể chuyện" },
+  { id: "vieneu:Đoan Trang", provider: "vieneu", voice: "Đoan Trang", name: "VieNeu — Đoan Trang (Nữ, Bắc, Tự nhiên)", badge: "Tự nhiên" },
+  { id: "vieneu:Thục Đoan", provider: "vieneu", voice: "Thục Đoan", name: "VieNeu — Thục Đoan (Nữ, Nam, Kể chuyện)", badge: "Miền Nam" },
+  { id: "vieneu:Minh Triết", provider: "vieneu", voice: "Minh Triết", name: "VieNeu — Minh Triết (Nam, Nam, Tin tức)", badge: "Miền Nam" },
+  { id: "vieneu:Mỹ Duyên", provider: "vieneu", voice: "Mỹ Duyên", name: "VieNeu — Mỹ Duyên (Nữ, Nam, Đọc truyện)", badge: "Đọc truyện" },
+  { id: "vieneu:Quỳnh Anh", provider: "vieneu", voice: "Quỳnh Anh", name: "VieNeu — Quỳnh Anh (Nữ, Bắc, Đọc truyện)", badge: "Đọc truyện" },
+  { id: "vieneu:Đức Trí", provider: "vieneu", voice: "Đức Trí", name: "VieNeu — Đức Trí (Nam, Nam, Đọc truyện)", badge: "Đọc truyện" },
+  { id: "vieneu:Kim Thanh", provider: "vieneu", voice: "Kim Thanh", name: "VieNeu — Kim Thanh (Nữ, Nam, Đọc truyện)", badge: "Đọc truyện" },
+  { id: "vieneu:Adam", provider: "vieneu", voice: "Adam", name: "VieNeu — Adam (Nam, Nam, Tự nhiên)", badge: "Tự nhiên" },
+  { id: "vieneu:Quốc Tuấn", provider: "vieneu", voice: "Quốc Tuấn", name: "VieNeu — Quốc Tuấn (Nam, Bắc, Tự nhiên)", badge: "Tự nhiên" },
+  { id: "edge:vi-VN-NamMinhNeural", provider: "edge", voice: "vi-VN-NamMinhNeural", name: "Edge TTS — Nam Minh (Dự phòng qua mạng)", badge: "Cloud Edge" },
+  { id: "edge:vi-VN-HoaiMyNeural", provider: "edge", voice: "vi-VN-HoaiMyNeural", name: "Edge TTS — Hoài My (Dự phòng qua mạng)", badge: "Cloud Edge" },
 ];
 
 const DEFAULT_SCRIPT: ScriptLine[] = [
@@ -129,14 +173,42 @@ const DEFAULT_SCRIPT: ScriptLine[] = [
   },
 ];
 
+// Helper: Convert stored raw HTML to visual WYSIWYG HTML
+function rawToVisualHtml(raw: string): string {
+  if (!raw) return "";
+  return raw
+    .replace(/<span class="kw" style="color:\s*var\(--accent-yellow\)">/gi, '<span class="kw-visual-yellow">')
+    .replace(/<span class="kw" style="color:\s*var\(--accent-red\)">/gi, '<span class="kw-visual-red">')
+    .replace(/<span class="kw">/gi, '<span class="kw-visual-white">');
+}
+
+// Helper: Convert visual WYSIWYG HTML back to raw HyperFrames HTML
+function visualToRawHtml(visual: string): string {
+  if (!visual) return "";
+  return visual
+    .replace(/<span class="kw-visual-yellow"[^>]*>/gi, '<span class="kw" style="color: var(--accent-yellow)">')
+    .replace(/<span class="kw-visual-red"[^>]*>/gi, '<span class="kw" style="color: var(--accent-red)">')
+    .replace(/<span class="kw-visual-white"[^>]*>/gi, '<span class="kw">')
+    // Remove unexpected nested spans or extraneous styles
+    .replace(/<font[^>]*>/gi, "")
+    .replace(/<\/font>/gi, "");
+}
+
+// Extract plain text for TTS
+function stripHtml(html: string): string {
+  return html.replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ").trim();
+}
+
 export default function DashboardPage() {
-  // Navigation View State: 'gallery' (Danh sách thư viện) | 'studio' (Tạo video mới)
   const [currentView, setCurrentView] = useState<"gallery" | "studio">("gallery");
+  const [isMounted, setIsMounted] = useState(false);
 
   // Form states
   const [title, setTitle] = useState("Áo bản Player vs Áo bản Fan");
   const [category, setCategory] = useState("Công nghệ & Trang bị");
   const [channel, setChannel] = useState("Phía sau sân cỏ");
+  const [provider, setProvider] = useState<"vieneu" | "edge">("vieneu");
+  const [voice, setVoice] = useState("Hải Đăng");
   const [slug, setSlug] = useState("ao-player-vs-ao-fan");
   const [conceptA, setConceptA] = useState("BẢN PLAYER");
   const [iconA, setIconA] = useState("jersey-player");
@@ -144,12 +216,24 @@ export default function DashboardPage() {
   const [iconB, setIconB] = useState("jersey-fan");
   const [scriptLines, setScriptLines] = useState<ScriptLine[]>(DEFAULT_SCRIPT);
 
-  // Active line ref for keyword highlighting helper
-  const [activeLineIndex, setActiveLineIndex] = useState<number | null>(null);
-  const captionInputRefs = useRef<{ [key: number]: HTMLInputElement | null }>({});
+  // Audio preview state
+  const [isPreviewingAudio, setIsPreviewingAudio] = useState(false);
+  const [isPlayingPreview, setIsPlayingPreview] = useState(false);
+  const previewAudioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Generation status states
+  // Auto-save feedback state
+  const [lastAutoSavedTime, setLastAutoSavedTime] = useState<string | null>(null);
+
+  // Visual vs Raw Mode toggle for script lines (index: boolean)
+  const [showRawCodeMap, setShowRawCodeMap] = useState<{ [key: number]: boolean }>({});
+  const [activeLineIdx, setActiveLineIdx] = useState<number | null>(null);
+  const visualEditorRefs = useRef<{ [key: number]: HTMLDivElement | null }>({});
+
+  // SSE Live Progress states
   const [isGenerating, setIsGenerating] = useState(false);
+  const [progressPercent, setProgressPercent] = useState<number>(0);
+  const [progressMessage, setProgressMessage] = useState<string>("");
+  const [progressPhase, setProgressPhase] = useState<string>("idle");
   const [generationLogs, setGenerationLogs] = useState<string>("");
   const [showLogs, setShowLogs] = useState(false);
   const [generationError, setGenerationError] = useState<string | null>(null);
@@ -163,13 +247,97 @@ export default function DashboardPage() {
 
   // Search & Filter in Gallery
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState("Tất cả chuyên mục");
-
-  // Template items
   const [templates, setTemplates] = useState<TemplateItem[]>([]);
 
+  // 1. AUTO-SAVE: Load draft from localStorage on mount
+  useEffect(() => {
+    setIsMounted(true);
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.title) setTitle(parsed.title);
+        if (parsed.category) setCategory(parsed.category);
+        if (parsed.channel) setChannel(parsed.channel);
+        if (parsed.provider) {
+          setProvider(parsed.provider);
+        } else if (parsed.voice && parsed.voice.includes("Neural")) {
+          setProvider("edge");
+        } else {
+          setProvider("vieneu");
+        }
+        if (parsed.voice) setVoice(parsed.voice);
+        if (parsed.slug) setSlug(parsed.slug);
+        if (parsed.conceptA) setConceptA(parsed.conceptA);
+        if (parsed.iconA) setIconA(parsed.iconA);
+        if (parsed.conceptB) setConceptB(parsed.conceptB);
+        if (parsed.iconB) setIconB(parsed.iconB);
+        if (Array.isArray(parsed.scriptLines) && parsed.scriptLines.length > 0) {
+          setScriptLines(parsed.scriptLines);
+        }
+        if (parsed.lastSaved) {
+          setLastAutoSavedTime(new Date(parsed.lastSaved).toLocaleTimeString("vi-VN"));
+        }
+      }
+    } catch (e) {
+      console.warn("Không thể tải bản nháp từ localStorage:", e);
+    }
+  }, []);
+
+  // 1. AUTO-SAVE: Chỉ lưu khi người dùng thực sự đang ở tab studio và có nội dung (debounced 400ms)
+  useEffect(() => {
+    if (!isMounted || currentView !== "studio") return;
+    const hasContent = Boolean(title.trim()) || scriptLines.some((l) => l.tts.trim());
+    if (!hasContent) return;
+
+    const timer = setTimeout(() => {
+      try {
+        const now = Date.now();
+        const draft = {
+          title,
+          category,
+          channel,
+          provider,
+          voice,
+          slug,
+          conceptA,
+          iconA,
+          conceptB,
+          iconB,
+          scriptLines,
+          lastSaved: now,
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
+        setLastAutoSavedTime(new Date(now).toLocaleTimeString("vi-VN"));
+      } catch (e) {
+        console.warn("Lỗi khi lưu nháp localStorage:", e);
+      }
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [title, category, channel, provider, voice, slug, conceptA, iconA, conceptB, iconB, scriptLines, isMounted, currentView]);
+
+  // Reset to default draft
+  const handleResetDraft = () => {
+    if (confirm("Bạn có chắc muốn khôi phục form về kịch bản mẫu ban đầu?")) {
+      setTitle("Áo bản Player vs Áo bản Fan");
+      setCategory("Công nghệ & Trang bị");
+      setChannel("Phía sau sân cỏ");
+      setProvider("vieneu");
+      setVoice("Hải Đăng");
+      setSlug("ao-player-vs-ao-fan");
+      setConceptA("BẢN PLAYER");
+      setIconA("jersey-player");
+      setConceptB("BẢN FAN");
+      setIconB("jersey-fan");
+      setScriptLines(DEFAULT_SCRIPT);
+      localStorage.removeItem(STORAGE_KEY);
+      setLastAutoSavedTime("Đã khôi phục mặc định");
+    }
+  };
+
   // Fetch videos
-  const fetchVideos = async () => {
+  const fetchVideos = useCallback(async () => {
     setIsLoadingVideos(true);
     try {
       const res = await fetch("/api/videos");
@@ -185,10 +353,10 @@ export default function DashboardPage() {
     } finally {
       setIsLoadingVideos(false);
     }
-  };
+  }, [selectedVideo]);
 
   // Fetch templates
-  const fetchTemplates = async () => {
+  const fetchTemplates = useCallback(async () => {
     try {
       const res = await fetch("/api/data-templates");
       const data = await res.json();
@@ -198,12 +366,12 @@ export default function DashboardPage() {
     } catch (err) {
       console.error("Lỗi khi tải templates:", err);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchVideos();
     fetchTemplates();
-  }, []);
+  }, [fetchVideos, fetchTemplates]);
 
   // Handle Load Template into Studio
   const handleLoadTemplate = (tpl: TemplateItem, autoSwitch = true) => {
@@ -216,6 +384,14 @@ export default function DashboardPage() {
     if (d.left?.icon) setIconA(d.left.icon);
     if (d.right?.name) setConceptB(d.right.name);
     if (d.right?.icon) setIconB(d.right.icon);
+    if (d.provider === "vieneu" || d.provider === "edge") {
+      setProvider(d.provider);
+    } else if (d.voice && d.voice.includes("Neural")) {
+      setProvider("edge");
+    } else {
+      setProvider("vieneu");
+    }
+    if (d.voice) setVoice(d.voice);
 
     if (Array.isArray(d.script)) {
       const formatted = d.script
@@ -237,43 +413,108 @@ export default function DashboardPage() {
     }
   };
 
-  // Helper to wrap highlighted text in <span class="kw">
-  const applyKeywordTag = (colorType: "yellow" | "red" | "white" | "clean") => {
-    if (activeLineIndex === null) return;
-    const input = captionInputRefs.current[activeLineIndex];
-    if (!input) return;
-
-    const start = input.selectionStart || 0;
-    const end = input.selectionEnd || 0;
-    const text = input.value;
-    const selected = text.substring(start, end);
-
-    if (!selected && colorType !== "clean") return;
-
-    let newCaption = text;
-
-    if (colorType === "clean") {
-      newCaption = text.replace(/<[^>]+>/g, "");
-    } else {
-      let tag = `<span class="kw">${selected}</span>`;
-      if (colorType === "yellow") {
-        tag = `<span class="kw" style="color: var(--accent-yellow)">${selected}</span>`;
-      } else if (colorType === "red") {
-        tag = `<span class="kw" style="color: var(--accent-red)">${selected}</span>`;
-      }
-      newCaption = text.substring(0, start) + tag + text.substring(end);
+  // Preview Audio only (Instant in seconds via Edge TTS)
+  const handlePreviewAudio = async () => {
+    // If playing, toggle pause
+    if (isPlayingPreview && previewAudioRef.current) {
+      previewAudioRef.current.pause();
+      setIsPlayingPreview(false);
+      return;
     }
 
-    updateLine(activeLineIndex, "caption", newCaption);
-    const cleanTts = newCaption.replace(/<[^>]+>/g, "");
-    updateLine(activeLineIndex, "tts", cleanTts);
+    setIsPreviewingAudio(true);
+    try {
+      const res = await fetch("/api/preview-audio", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          script: scriptLines,
+          provider,
+          voice,
+          customSlug: slug,
+          title,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Không thể tạo audio preview");
+      }
+
+      if (previewAudioRef.current) {
+        previewAudioRef.current.pause();
+      }
+
+      const audio = new Audio(data.audioUrl);
+      previewAudioRef.current = audio;
+      audio.play();
+      setIsPlayingPreview(true);
+
+      audio.onended = () => {
+        setIsPlayingPreview(false);
+      };
+      audio.onerror = () => {
+        setIsPlayingPreview(false);
+      };
+    } catch (err: unknown) {
+      const error = err as Error;
+      alert("Lỗi nghe thử audio: " + error.message);
+    } finally {
+      setIsPreviewingAudio(false);
+    }
+  };
+
+  // 2. WYSIWYG: Apply visual keyword tag to selection
+  const applyVisualTag = (colorType: "yellow" | "red" | "white" | "clean") => {
+    if (activeLineIdx === null) return;
+    const editor = visualEditorRefs.current[activeLineIdx];
+    if (!editor) return;
+
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return;
+
+    const range = selection.getRangeAt(0);
+
+    // Ensure selection is inside the active editor
+    if (!editor.contains(range.commonAncestorContainer)) return;
+
+    if (colorType === "clean") {
+      // Remove tags, unwrap selection
+      const selectedHtml = range.extractContents();
+      const textContent = selectedHtml.textContent || "";
+      range.insertNode(document.createTextNode(textContent));
+    } else {
+      const selectedText = range.toString();
+      if (!selectedText.trim()) return;
+
+      const span = document.createElement("span");
+      if (colorType === "yellow") {
+        span.className = "kw-visual-yellow";
+      } else if (colorType === "red") {
+        span.className = "kw-visual-red";
+      } else {
+        span.className = "kw-visual-white";
+      }
+      span.textContent = selectedText;
+
+      range.deleteContents();
+      range.insertNode(span);
+    }
+
+    // Sync to state
+    const visualContent = editor.innerHTML;
+    const rawContent = visualToRawHtml(visualContent);
+    const plainTts = stripHtml(rawContent);
+
+    updateLine(activeLineIdx, "caption", rawContent);
+    updateLine(activeLineIdx, "tts", plainTts);
   };
 
   const updateLine = (index: number, field: "tts" | "caption", value: string) => {
     const updated = [...scriptLines];
     updated[index] = { ...updated[index], [field]: value };
     if (field === "caption" && !updated[index].tts) {
-      updated[index].tts = value.replace(/<[^>]+>/g, "");
+      updated[index].tts = stripHtml(value);
     }
     setScriptLines(updated);
   };
@@ -287,19 +528,42 @@ export default function DashboardPage() {
     setScriptLines(scriptLines.filter((_, i) => i !== index));
   };
 
-  // Submit Generate Video
+  // 3. SSE LIVE PROGRESS: Generate Video with streaming status
   const handleGenerate = async () => {
     setIsGenerating(true);
+    setProgressPercent(5);
+    setProgressPhase("start");
+    setProgressMessage("Đang khởi động engine sản xuất...");
     setGenerationLogs("");
     setGenerationError(null);
     setGenerationSuccess(false);
     setShowLogs(true);
+
+    // Dừng preview audio nếu đang phát
+    if (previewAudioRef.current) {
+      previewAudioRef.current.pause();
+      setIsPlayingPreview(false);
+    }
+
+    // Giải phóng thẻ video trong DOM để Windows lập tức nhả file lock
+    setSelectedVideo(null);
+    if (typeof document !== "undefined") {
+      document.querySelectorAll("video").forEach((v) => {
+        try {
+          v.pause();
+          v.removeAttribute("src");
+          v.load();
+        } catch {}
+      });
+    }
 
     try {
       const payload = {
         title,
         category,
         channel,
+        provider,
+        voice,
         customSlug: slug,
         left: { name: conceptA, icon: iconA },
         right: { name: conceptB, icon: iconB },
@@ -312,32 +576,73 @@ export default function DashboardPage() {
         body: JSON.stringify(payload),
       });
 
-      const result = await res.json();
-
       if (!res.ok) {
-        throw new Error(result.error || "Quá trình render thất bại");
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || "Lỗi kết nối API");
       }
 
-      setGenerationLogs(result.log || "Render thành công!");
-      setGenerationSuccess(true);
+      // Read SSE stream
+      const reader = res.body?.getReader();
+      if (!reader) throw new Error("Trình duyệt không hỗ trợ đọc stream");
 
-      // Refresh video list & templates
-      await fetchVideos();
-      await fetchTemplates();
+      const decoder = new TextDecoder();
+      let buffer = "";
 
-      const newVid = {
-        filename: result.filename || `${result.slug}.mp4`,
-        title: result.slug || title,
-        sizeBytes: 0,
-        sizeFormatted: "Vừa xong",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        url: result.videoUrl || `/api/videos/${result.filename}`,
-      };
-      setSelectedVideo(newVid);
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (trimmed.startsWith("data:")) {
+            try {
+              const data = JSON.parse(trimmed.replace(/^data:\s*/, ""));
+
+              if (data.type === "log") {
+                setGenerationLogs((prev) => prev + data.text);
+              } else if (data.type === "progress") {
+                setProgressPercent(data.percent || 10);
+                setProgressPhase(data.phase || "render");
+                if (data.message) setProgressMessage(data.message);
+              } else if (data.type === "done") {
+                setProgressPercent(100);
+                setProgressPhase("done");
+                setProgressMessage("🎉 Xuất video MP4 thành công 100%!");
+                setGenerationSuccess(true);
+
+                // Auto-refresh library
+                await fetchVideos();
+                await fetchTemplates();
+
+                const newVid = {
+                  filename: data.filename || `${data.slug}.mp4`,
+                  title: data.slug || title,
+                  sizeBytes: 0,
+                  sizeFormatted: "Mới render",
+                  createdAt: new Date().toISOString(),
+                  updatedAt: new Date().toISOString(),
+                  url: data.videoUrl || `/api/videos/${data.filename}`,
+                };
+                setSelectedVideo(newVid);
+              } else if (data.type === "error") {
+                throw new Error(data.message || "Quá trình render thất bại");
+              }
+            } catch (err: unknown) {
+              const parseErr = err as Error;
+              console.warn("Parse SSE event error:", parseErr);
+            }
+          }
+        }
+      }
     } catch (err: unknown) {
       const error = err as Error;
       setGenerationError(error.message);
+      setProgressPhase("error");
+      setProgressMessage(`❌ Lỗi: ${error.message}`);
       setGenerationLogs((prev) => prev + `\n❌ LỖI: ${error.message}`);
     } finally {
       setIsGenerating(false);
@@ -346,13 +651,12 @@ export default function DashboardPage() {
 
   // Filtered videos for Gallery View
   const filteredVideos = videos.filter((vid) => {
-    const matchSearch =
+    return (
       vid.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      vid.filename.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchSearch;
+      vid.filename.toLowerCase().includes(searchQuery.toLowerCase())
+    );
   });
 
-  // Calculate total storage
   const totalSizeBytes = videos.reduce((acc, v) => acc + (v.sizeBytes || 0), 0);
   const totalSizeFormatted = (totalSizeBytes / (1024 * 1024)).toFixed(1) + " MB";
 
@@ -401,39 +705,25 @@ export default function DashboardPage() {
               </span>
             </button>
 
-            <button
-              onClick={() => setCurrentView("studio")}
-              className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
-                currentView === "studio"
-                  ? "bg-[#143D2E] text-[#FFD200] shadow border border-[#FFD200]/30"
-                  : "text-[#EBF8F2]/70 hover:text-white hover:bg-white/5"
-              }`}
+            <Link
+              href="/create"
+              className="flex items-center space-x-2 px-4 py-2 rounded-lg text-xs font-bold transition-all text-[#EBF8F2]/70 hover:text-[#FFD200] hover:bg-white/5"
             >
-              <Plus className="w-4 h-4" />
-              <span>Tạo Video Mới</span>
-            </button>
+              <Sparkles className="w-4 h-4 text-[#FFD200]" />
+              <span>Xưởng Tạo Video (/create)</span>
+            </Link>
           </nav>
         </div>
 
         {/* Right Header Controls */}
         <div className="flex items-center space-x-3">
-          {currentView === "gallery" ? (
-            <button
-              onClick={() => setCurrentView("studio")}
-              className="flex items-center space-x-2 px-4 py-2 rounded-xl bg-gradient-to-r from-[#10B981] to-[#FFD200] text-[#081C15] font-black text-xs uppercase tracking-wide hover:shadow-lg hover:shadow-[#10B981]/25 hover:scale-105 active:scale-95 transition"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Tạo Video Mới</span>
-            </button>
-          ) : (
-            <button
-              onClick={() => setCurrentView("gallery")}
-              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-[#0E291E] hover:bg-[#143D2E] border border-[#EBF8F2]/20 text-xs font-semibold text-[#EBF8F2] transition"
-            >
-              <ArrowLeft className="w-3.5 h-3.5 text-[#FFD200]" />
-              <span>Về Thư Viện</span>
-            </button>
-          )}
+          <Link
+            href="/create?new=1"
+            className="flex items-center space-x-2 px-4 py-2 rounded-xl bg-gradient-to-r from-[#10B981] to-[#FFD200] text-[#081C15] font-black text-xs uppercase tracking-wide hover:shadow-lg hover:shadow-[#10B981]/25 hover:scale-105 active:scale-95 transition"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Tạo Video Mới</span>
+          </Link>
 
           <button
             onClick={fetchVideos}
@@ -492,7 +782,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Search, Filter & Action Bar */}
+          {/* Search Bar */}
           <div className="p-4 rounded-2xl bg-[#0E291E]/80 backdrop-blur-md border border-[#EBF8F2]/15 shadow-lg flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="relative w-full md:w-96">
               <Search className="w-4 h-4 text-[#EBF8F2]/50 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -518,18 +808,18 @@ export default function DashboardPage() {
               <div className="w-16 h-16 rounded-2xl bg-[#143D2E] border border-[#FFD200]/30 flex items-center justify-center text-3xl mb-4">
                 ⚽
               </div>
-              <h3 className="text-base font-bold text-[#EBF8F2]">Chưa có video nào phù hợp</h3>
+              <h3 className="text-base font-bold text-[#EBF8F2]">Chưa có video nào</h3>
               <p className="text-xs text-[#EBF8F2]/60 max-w-md mt-1 mb-5">
                 {searchQuery
-                  ? "Không tìm thấy video khớp với từ khóa tìm kiếm của bạn."
+                  ? "Không tìm thấy video khớp với từ khóa tìm kiếm."
                   : "Thư mục output/ hiện đang trống. Hãy bắt đầu sản xuất video so sánh đầu tiên!"}
               </p>
-              <button
-                onClick={() => setCurrentView("studio")}
+              <Link
+                href="/create?new=1"
                 className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#10B981] to-[#FFD200] text-[#081C15] font-black text-xs uppercase tracking-wider hover:scale-105 transition"
               >
-                + Bắt đầu tạo video ngay
-              </button>
+                + Bắt đầu tạo video ngay (/create)
+              </Link>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
@@ -565,14 +855,12 @@ export default function DashboardPage() {
                         }}
                       />
 
-                      {/* Dark Overlay with Play Icon */}
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30 group-hover:bg-black/40 transition-colors flex items-center justify-center">
                         <div className="w-12 h-12 rounded-full bg-[#FFD200]/90 text-[#081C15] flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
                           <Play className="w-5 h-5 fill-current ml-0.5" />
                         </div>
                       </div>
 
-                      {/* Top Badges */}
                       <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between">
                         <span className="px-2 py-0.5 rounded-full bg-[#081C15]/80 backdrop-blur text-[10px] font-bold text-[#FFD200] border border-[#FFD200]/30">
                           9:16 Reel
@@ -582,7 +870,6 @@ export default function DashboardPage() {
                         </span>
                       </div>
 
-                      {/* Bottom Info on Poster */}
                       <div className="absolute bottom-2.5 left-2.5 right-2.5">
                         <p className="text-[11px] font-mono text-[#EBF8F2]/80 truncate">
                           {new Date(vid.updatedAt).toLocaleDateString("vi-VN")} •{" "}
@@ -609,7 +896,6 @@ export default function DashboardPage() {
                         </p>
                       </div>
 
-                      {/* Actions */}
                       <div className="pt-2 border-t border-[#EBF8F2]/10 flex items-center justify-between gap-1.5">
                         <button
                           onClick={() => setModalVideo(vid)}
@@ -620,13 +906,13 @@ export default function DashboardPage() {
                         </button>
 
                         {correspondingTpl && (
-                          <button
-                            onClick={() => handleLoadTemplate(correspondingTpl, true)}
+                          <Link
+                            href={`/create?template=${correspondingTpl.slug}`}
                             className="py-1.5 px-2 rounded-lg bg-[#0E291E] hover:bg-[#FFD200]/20 text-xs font-semibold text-[#FFD200] border border-[#FFD200]/30 transition"
                             title="Nạp vào Studio để sửa / clone"
                           >
                             <Zap className="w-3.5 h-3.5" />
-                          </button>
+                          </Link>
                         )}
 
                         <a
@@ -652,9 +938,9 @@ export default function DashboardPage() {
         <main className="flex-1 max-w-[1720px] w-full mx-auto p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           {/* ================= LEFT COLUMN: FORM BUILDER (7 Cols) ================= */}
           <div className="lg:col-span-7 space-y-6">
-            {/* General Metadata Card */}
+            {/* General Metadata Card with Auto-save indicator */}
             <div className="bg-[#0E291E]/80 backdrop-blur-md border border-[#EBF8F2]/15 rounded-2xl p-5 shadow-xl">
-              <div className="flex items-center justify-between pb-4 border-b border-[#EBF8F2]/10 mb-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-[#EBF8F2]/10 mb-4 gap-2">
                 <div className="flex items-center space-x-2">
                   <Layers className="w-4 h-4 text-[#FFD200]" />
                   <h2 className="text-sm font-bold uppercase tracking-wider text-[#FFD200]">
@@ -662,22 +948,25 @@ export default function DashboardPage() {
                   </h2>
                 </div>
 
-                {/* Quick Templates Dropdown */}
-                {templates.length > 0 && (
-                  <div className="flex items-center space-x-1.5 text-xs">
-                    <span className="text-[#EBF8F2]/60">Mẫu có sẵn:</span>
-                    {templates.map((tpl) => (
-                      <button
-                        key={tpl.slug}
-                        type="button"
-                        onClick={() => handleLoadTemplate(tpl, false)}
-                        className="px-2 py-0.5 rounded bg-[#143D2E] hover:bg-[#10B981]/30 hover:text-[#FFD200] border border-[#EBF8F2]/15 text-[11px] font-semibold text-[#EBF8F2] transition"
-                      >
-                        {tpl.slug}
-                      </button>
-                    ))}
-                  </div>
-                )}
+                {/* Auto-save & Reset Bar */}
+                <div className="flex items-center space-x-3 text-xs">
+                  {lastAutoSavedTime && (
+                    <span className="flex items-center space-x-1 text-[#10B981] font-mono text-[11px] bg-[#10B981]/10 px-2 py-0.5 rounded border border-[#10B981]/20">
+                      <Check className="w-3 h-3" />
+                      <span>Đã lưu nháp: {lastAutoSavedTime}</span>
+                    </span>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={handleResetDraft}
+                    className="flex items-center space-x-1 text-[#EBF8F2]/50 hover:text-[#FF334B] text-[11px] transition"
+                    title="Xóa nháp và khôi phục form mặc định"
+                  >
+                    <RotateCcw className="w-3 h-3" />
+                    <span>Khôi phục</span>
+                  </button>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -722,6 +1011,52 @@ export default function DashboardPage() {
                     placeholder="ao-player-vs-ao-fan"
                     className="w-full bg-[#081C15] border border-[#EBF8F2]/20 rounded-xl px-4 py-2.5 text-sm text-[#EBF8F2] focus:border-[#FFD200] outline-none font-mono"
                   />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-semibold text-[#EBF8F2]/70 mb-1 flex items-center justify-between">
+                    <span className="flex items-center space-x-2">
+                      <span>Giọng đọc AI (Voice)</span>
+                      {provider === "vieneu" ? (
+                        <span className="text-[10px] bg-[#10B981]/20 text-[#10B981] font-bold px-2 py-0.5 rounded border border-[#10B981]/30">
+                          ⚡ VieNeu TTS Local (127.0.0.1:8001)
+                        </span>
+                      ) : (
+                        <span className="text-[10px] bg-blue-500/20 text-blue-400 font-bold px-2 py-0.5 rounded border border-blue-500/30">
+                          ☁️ Edge TTS Cloud
+                        </span>
+                      )}
+                    </span>
+                    <span className="text-[10px] text-[#FFD200] font-bold">
+                      {provider === "vieneu" ? "CIT Voice Studio (Local Engine)" : "Microsoft Edge Online"}
+                    </span>
+                  </label>
+                  <select
+                    value={`${provider}:${voice}`}
+                    onChange={(e) => {
+                      const selected = VOICE_OPTIONS.find((v) => v.id === e.target.value);
+                      if (selected) {
+                        setProvider(selected.provider);
+                        setVoice(selected.voice);
+                      }
+                    }}
+                    className="w-full bg-[#081C15] border border-[#EBF8F2]/20 rounded-xl px-4 py-2.5 text-sm font-semibold text-[#EBF8F2] focus:border-[#FFD200] outline-none"
+                  >
+                    <optgroup label="⚡ VieNeu TTS (Chạy Local - Giọng Đọc Chính)">
+                      {VOICE_OPTIONS.filter((v) => v.provider === "vieneu").map((v) => (
+                        <option key={v.id} value={v.id}>
+                          {v.name}
+                        </option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="☁️ Edge TTS (Dự Phòng Qua Mạng)">
+                      {VOICE_OPTIONS.filter((v) => v.provider === "edge").map((v) => (
+                        <option key={v.id} value={v.id}>
+                          {v.name}
+                        </option>
+                      ))}
+                    </optgroup>
+                  </select>
                 </div>
               </div>
             </div>
@@ -819,134 +1154,216 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Script Builder (12 Lines) Card */}
+            {/* Script Builder with Visual WYSIWYG Editor */}
             <div className="bg-[#0E291E]/80 backdrop-blur-md border border-[#EBF8F2]/15 rounded-2xl p-5 shadow-xl">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-[#EBF8F2]/10 mb-4 gap-2">
                 <div className="flex items-center space-x-2">
                   <Sparkles className="w-4 h-4 text-[#FFD200]" />
                   <h2 className="text-sm font-bold uppercase tracking-wider text-[#FFD200]">
-                    3. Kịch bản & Trợ lý Highlight từ khóa
+                    3. Kịch bản & Soạn thảo Trực quan (WYSIWYG)
                   </h2>
                   <span className="text-xs bg-[#10B981]/20 text-[#10B981] font-bold px-2 py-0.5 rounded-full border border-[#10B981]/30">
                     {scriptLines.length} câu
                   </span>
                 </div>
 
-                {/* Floating Keyword Highlight Toolbar */}
+                {/* Floating Visual Keyword Highlight Toolbar */}
                 <div className="flex items-center space-x-1.5 bg-[#081C15] p-1.5 rounded-xl border border-[#EBF8F2]/20">
                   <span className="text-[10px] font-bold uppercase text-[#EBF8F2]/60 px-1.5">
-                    Bọc thẻ:
+                    Tô màu từ chọn:
                   </span>
                   <button
                     type="button"
-                    onClick={() => applyKeywordTag("yellow")}
-                    className="px-2 py-1 rounded bg-[#FFD200]/20 hover:bg-[#FFD200]/30 text-[#FFD200] text-xs font-bold border border-[#FFD200]/40 transition"
-                    title="Highlight vàng (Thẻ phạt vàng / Concept)"
+                    onMouseDown={(e) => {
+                      e.preventDefault(); // Don't steal selection focus
+                      applyVisualTag("yellow");
+                    }}
+                    className="px-2.5 py-1 rounded bg-[#FFD200]/20 hover:bg-[#FFD200]/30 text-[#FFD200] text-xs font-bold border border-[#FFD200]/40 transition"
+                    title="Tô màu Vàng (Thẻ phạt vàng / Concept)"
                   >
                     ⭐ Vàng
                   </button>
                   <button
                     type="button"
-                    onClick={() => applyKeywordTag("red")}
-                    className="px-2 py-1 rounded bg-[#FF334B]/20 hover:bg-[#FF334B]/30 text-[#FF334B] text-xs font-bold border border-[#FF334B]/40 transition"
-                    title="Highlight đỏ (Thẻ phạt đỏ / Mâu thuẫn)"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      applyVisualTag("red");
+                    }}
+                    className="px-2.5 py-1 rounded bg-[#FF334B]/20 hover:bg-[#FF334B]/30 text-[#FF334B] text-xs font-bold border border-[#FF334B]/40 transition"
+                    title="Tô màu Đỏ (Thẻ phạt đỏ / Mâu thuẫn)"
                   >
                     🟥 Đỏ
                   </button>
                   <button
                     type="button"
-                    onClick={() => applyKeywordTag("white")}
-                    className="px-2 py-1 rounded bg-white/10 hover:bg-white/20 text-white text-xs font-bold border border-white/30 transition"
-                    title="Highlight trắng viền sáng"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      applyVisualTag("white");
+                    }}
+                    className="px-2.5 py-1 rounded bg-white/10 hover:bg-white/20 text-white text-xs font-bold border border-white/30 transition"
+                    title="Tô màu Trắng viền sáng"
                   >
                     ⚪ Trắng
                   </button>
                   <button
                     type="button"
-                    onClick={() => applyKeywordTag("clean")}
-                    className="px-2 py-1 rounded bg-red-950/40 hover:bg-red-900/50 text-red-300 text-xs font-semibold border border-red-500/20 transition"
-                    title="Xóa bỏ thẻ HTML"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      applyVisualTag("clean");
+                    }}
+                    className="px-2.5 py-1 rounded bg-red-950/40 hover:bg-red-900/50 text-red-300 text-xs font-semibold border border-red-500/20 transition"
+                    title="Xóa bỏ định dạng màu"
                   >
-                    🧹 Xóa
+                    🧹 Bỏ màu
                   </button>
                 </div>
               </div>
 
+              <p className="text-xs text-[#EBF8F2]/60 mb-4">
+                ✨ <b>Soạn thảo trực quan:</b> Gõ nội dung bình thường, sau đó bôi đen từ khóa và bấm các nút màu ở trên để tô màu nổi bật. Không còn những đoạn code <code>&lt;span class=...&gt;</code> gây rối mắt!
+              </p>
+
               {/* List of lines */}
-              <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2">
-                {scriptLines.map((line, idx) => (
-                  <div
-                    key={idx}
-                    className={`p-3 rounded-xl border transition-all ${
-                      activeLineIndex === idx
-                        ? "bg-[#143D2E]/90 border-[#FFD200] shadow-md shadow-[#FFD200]/10"
-                        : "bg-[#081C15]/70 border-[#EBF8F2]/10 hover:border-[#EBF8F2]/30"
-                    }`}
-                    onClick={() => setActiveLineIndex(idx)}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center space-x-2">
-                        <span className="w-5 h-5 rounded-full bg-[#10B981] text-[#081C15] text-[11px] font-black flex items-center justify-center">
-                          {idx + 1}
-                        </span>
-                        <span className="text-[11px] font-bold text-[#EBF8F2]/70 uppercase">
-                          {idx === 0
-                            ? "Hook mở đầu (Gây tò mò)"
-                            : idx === 1
-                            ? "Hook nối"
-                            : idx === 2
-                            ? "Giới thiệu VS"
-                            : idx >= 3 && idx <= 5
-                            ? `Đặc điểm ${conceptB || "B"}`
-                            : idx >= 6 && idx <= 8
-                            ? `Đặc điểm ${conceptA || "A"}`
-                            : idx >= 9 && idx <= 10
-                            ? "So sánh mâu thuẫn đối nghịch"
-                            : "Call to Action kết video"}
-                        </span>
+              <div className="space-y-3.5 max-h-[520px] overflow-y-auto pr-2">
+                {scriptLines.map((line, idx) => {
+                  const isRaw = !!showRawCodeMap[idx];
+                  return (
+                    <div
+                      key={idx}
+                      className={`p-3.5 rounded-xl border transition-all ${
+                        activeLineIdx === idx
+                          ? "bg-[#143D2E]/90 border-[#FFD200] shadow-md shadow-[#FFD200]/10"
+                          : "bg-[#081C15]/70 border-[#EBF8F2]/10 hover:border-[#EBF8F2]/30"
+                      }`}
+                      onClick={() => setActiveLineIdx(idx)}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center space-x-2">
+                          <span className="w-5 h-5 rounded-full bg-[#10B981] text-[#081C15] text-[11px] font-black flex items-center justify-center">
+                            {idx + 1}
+                          </span>
+                          <span className="text-[11px] font-bold text-[#EBF8F2]/70 uppercase">
+                            {idx === 0
+                              ? "Hook mở đầu (Gây tò mò)"
+                              : idx === 1
+                              ? "Hook nối"
+                              : idx === 2
+                              ? "Giới thiệu VS"
+                              : idx >= 3 && idx <= 5
+                              ? `Đặc điểm ${conceptB || "B"}`
+                              : idx >= 6 && idx <= 8
+                              ? `Đặc điểm ${conceptA || "A"}`
+                              : idx >= 9 && idx <= 10
+                              ? "So sánh mâu thuẫn đối nghịch"
+                              : "Call to Action kết video"}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center space-x-1">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShowRawCodeMap((prev) => ({ ...prev, [idx]: !prev[idx] }));
+                            }}
+                            className={`p-1 rounded text-xs transition ${
+                              isRaw
+                                ? "bg-[#FFD200] text-[#081C15] font-bold"
+                                : "text-[#EBF8F2]/40 hover:text-[#EBF8F2]"
+                            }`}
+                            title={isRaw ? "Chuyển sang chế độ WYSIWYG" : "Xem/Sửa mã HTML gốc"}
+                          >
+                            <Code className="w-3.5 h-3.5" />
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              removeLine(idx);
+                            }}
+                            className="text-[#EBF8F2]/40 hover:text-[#FF334B] p-1 transition"
+                            title="Xóa dòng này"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          removeLine(idx);
-                        }}
-                        className="text-[#EBF8F2]/40 hover:text-[#FF334B] p-1 transition"
-                        title="Xóa dòng này"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <input
-                        ref={(el) => {
-                          captionInputRefs.current[idx] = el;
-                        }}
-                        type="text"
-                        value={line.caption}
-                        onFocus={() => setActiveLineIndex(idx)}
-                        onChange={(e) => updateLine(idx, "caption", e.target.value)}
-                        placeholder="Nội dung phụ đề hiển thị (kèm thẻ highlight)..."
-                        className="w-full bg-[#0E291E] border border-[#EBF8F2]/20 rounded-lg px-3 py-1.5 text-xs text-[#EBF8F2] focus:border-[#FFD200] outline-none font-sans"
-                      />
-
-                      <div className="bg-[#05130E] px-3 py-1.5 rounded-lg border border-[#EBF8F2]/10 flex items-center justify-between text-xs">
-                        <div className="text-[#EBF8F2]/80">
-                          <span className="text-[10px] text-[#FFD200]/80 font-bold uppercase mr-2">
-                            Hiển thị:
-                          </span>
-                          <span
-                            dangerouslySetInnerHTML={{
-                              __html: line.caption || '<span class="text-gray-500">Trống</span>',
+                      {/* Line Editor Box */}
+                      <div className="space-y-2">
+                        {isRaw ? (
+                          /* Raw HTML Mode */
+                          <input
+                            type="text"
+                            value={line.caption}
+                            onFocus={() => setActiveLineIdx(idx)}
+                            onChange={(e) => {
+                              updateLine(idx, "caption", e.target.value);
+                              updateLine(idx, "tts", stripHtml(e.target.value));
                             }}
+                            placeholder="Nhập câu kịch bản tại đây (mã HTML gốc)..."
+                            className="w-full bg-[#0E291E] border border-[#FFD200]/50 rounded-lg px-3 py-2 text-xs font-mono text-[#EBF8F2] outline-none"
                           />
+                        ) : (
+                          /* Visual WYSIWYG Editable Box */
+                          <div
+                            ref={(el) => {
+                              visualEditorRefs.current[idx] = el;
+                            }}
+                            contentEditable
+                            suppressContentEditableWarning
+                            data-placeholder="Nhập câu kịch bản tại đây..."
+                            onFocus={() => setActiveLineIdx(idx)}
+                            onBlur={(e) => {
+                              const visualHtml = e.currentTarget.innerHTML;
+                              const raw = visualToRawHtml(visualHtml);
+                              const plain = stripHtml(raw);
+                              if (!plain) {
+                                e.currentTarget.innerHTML = "";
+                                updateLine(idx, "caption", "");
+                                updateLine(idx, "tts", "");
+                              } else {
+                                updateLine(idx, "caption", raw);
+                                updateLine(idx, "tts", plain);
+                              }
+                            }}
+                            onKeyUp={(e) => {
+                              const visualHtml = e.currentTarget.innerHTML;
+                              const raw = visualToRawHtml(visualHtml);
+                              const plain = stripHtml(raw);
+                              if (!plain) {
+                                updateLine(idx, "caption", "");
+                                updateLine(idx, "tts", "");
+                              } else {
+                                updateLine(idx, "caption", raw);
+                                updateLine(idx, "tts", plain);
+                              }
+                            }}
+                            dangerouslySetInnerHTML={{
+                              __html: rawToVisualHtml(line.caption),
+                            }}
+                            className="w-full min-h-[38px] bg-[#0E291E] border border-[#EBF8F2]/20 focus:border-[#FFD200] rounded-lg px-3 py-2 text-xs text-[#EBF8F2] outline-none leading-relaxed transition font-sans cursor-text"
+                          />
+                        )}
+
+                        {/* Live Video Screen Preview Bar */}
+                        <div className="bg-[#05130E] px-3 py-1.5 rounded-lg border border-[#EBF8F2]/10 flex items-center justify-between text-xs">
+                          <div className="text-[#EBF8F2]/80">
+                            <span className="text-[10px] text-[#FFD200]/80 font-bold uppercase mr-2">
+                              Xem trước màn hình:
+                            </span>
+                            <span
+                              dangerouslySetInnerHTML={{
+                                __html: line.caption || '<span class="text-gray-500">Trống</span>',
+                              }}
+                            />
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               <div className="mt-4 flex justify-between items-center">
@@ -958,43 +1375,90 @@ export default function DashboardPage() {
                   <Plus className="w-3.5 h-3.5" />
                   <span>Thêm dòng thoại</span>
                 </button>
-
-                <button
-                  type="button"
-                  onClick={() => setScriptLines(DEFAULT_SCRIPT)}
-                  className="text-xs text-[#EBF8F2]/50 hover:text-[#FFD200] underline"
-                >
-                  Khôi phục 12 dòng mặc định
-                </button>
               </div>
             </div>
 
-            {/* Action Button: GENERATE VIDEO */}
+            {/* 3. Action Button: GENERATE VIDEO WITH LIVE SSE PROGRESS BAR */}
             <div className="space-y-4">
-              <button
-                type="button"
-                disabled={isGenerating}
-                onClick={handleGenerate}
-                className={`w-full py-4 rounded-2xl font-black text-base uppercase tracking-wider transition-all shadow-xl flex items-center justify-center space-x-3 ${
-                  isGenerating
-                    ? "bg-gradient-to-r from-emerald-800 to-green-900 text-emerald-200 cursor-not-allowed opacity-80"
-                    : "bg-gradient-to-r from-[#10B981] via-[#22C55E] to-[#FFD200] text-[#081C15] hover:shadow-2xl hover:shadow-[#10B981]/30 hover:scale-[1.01] active:scale-[0.99]"
-                }`}
-              >
-                {isGenerating ? (
-                  <>
-                    <RefreshCw className="w-5 h-5 animate-spin" />
-                    <span>ĐANG TỔNG HỢP GIỌNG ĐỌC & RENDER VIDEO MP4...</span>
-                  </>
-                ) : (
-                  <>
+              {isGenerating ? (
+                /* LIVE PROGRESS BAR DISPLAY */
+                <div className="relative w-full overflow-hidden rounded-2xl bg-[#081C15] border-2 border-[#10B981] shadow-2xl p-4">
+                  {/* Glowing progress fill bar */}
+                  <div
+                    className="absolute top-0 bottom-0 left-0 bg-gradient-to-r from-[#143D2E] via-[#10B981] to-[#FFD200] opacity-40 transition-all duration-300"
+                    style={{ width: `${progressPercent}%` }}
+                  />
+
+                  <div className="relative z-10 flex flex-col space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <RefreshCw className="w-5 h-5 animate-spin text-[#FFD200]" />
+                        <span className="font-black text-sm uppercase tracking-wider text-[#FFD200]">
+                          Đang sản xuất video...
+                        </span>
+                      </div>
+                      <span className="font-mono text-base font-black text-[#FFD200]">
+                        {progressPercent}%
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-[#EBF8F2] font-semibold truncate">
+                      {progressMessage || "Đang xử lý..."}
+                    </p>
+
+                    {/* Progress track */}
+                    <div className="w-full bg-[#05130E] h-2.5 rounded-full overflow-hidden border border-[#EBF8F2]/10 mt-1">
+                      <div
+                        className="bg-gradient-to-r from-[#10B981] to-[#FFD200] h-full rounded-full transition-all duration-300 shadow-md"
+                        style={{ width: `${progressPercent}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                /* Dual Action Buttons: Preview Audio + Generate Video */
+                <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                  <button
+                    type="button"
+                    disabled={isGenerating || isPreviewingAudio}
+                    onClick={handlePreviewAudio}
+                    className={`sm:col-span-4 py-4 rounded-2xl font-bold text-xs uppercase tracking-wider border-2 transition-all shadow-lg flex items-center justify-center space-x-2 cursor-pointer ${
+                      isPlayingPreview
+                        ? "bg-[#FF334B]/20 border-[#FF334B] text-[#FF334B] hover:bg-[#FF334B]/30 animate-pulse"
+                        : "bg-[#0E291E] border-[#EBF8F2]/25 text-[#EBF8F2] hover:border-[#FFD200] hover:text-[#FFD200] active:scale-95"
+                    }`}
+                    title="Nghe thử giọng đọc AI cho toàn bộ kịch bản trong vài giây"
+                  >
+                    {isPreviewingAudio ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 animate-spin text-[#FFD200]" />
+                        <span>Đang tạo audio...</span>
+                      </>
+                    ) : isPlayingPreview ? (
+                      <>
+                        <Pause className="w-4 h-4 fill-current text-[#FF334B]" />
+                        <span>Dừng nghe thử</span>
+                      </>
+                    ) : (
+                      <>
+                        <Volume2 className="w-4 h-4 text-[#FFD200]" />
+                        <span>🔊 Nghe thử Audio</span>
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleGenerate}
+                    className="sm:col-span-8 py-4 rounded-2xl font-black text-sm uppercase tracking-wider bg-gradient-to-r from-[#10B981] via-[#22C55E] to-[#FFD200] text-[#081C15] hover:shadow-2xl hover:shadow-[#10B981]/30 hover:scale-[1.01] active:scale-[0.99] transition-all shadow-xl flex items-center justify-center space-x-2 cursor-pointer"
+                  >
                     <span className="text-xl">⚽</span>
                     <span>BẮT ĐẦU SẢN XUẤT VIDEO (GENERATE MP4)</span>
-                  </>
-                )}
-              </button>
+                  </button>
+                </div>
+              )}
 
-              {/* Status Alert */}
+              {/* Status Alerts */}
               {generationError && (
                 <div className="p-4 rounded-xl bg-red-950/60 border border-red-500/40 text-red-200 flex items-start space-x-3 text-sm">
                   <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
@@ -1010,18 +1474,16 @@ export default function DashboardPage() {
                   <div className="flex items-center space-x-3">
                     <CheckCircle2 className="w-5 h-5 text-[#10B981] shrink-0" />
                     <div>
-                      <div className="font-bold">Đã render thành công!</div>
+                      <div className="font-bold">Đã render thành công 100%!</div>
                       <div className="text-xs opacity-80">Video đã sẵn sàng bên cột phải hoặc trong Thư viện.</div>
                     </div>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <button
-                      onClick={() => setCurrentView("gallery")}
-                      className="px-3 py-1.5 rounded-lg bg-[#FFD200] text-[#081C15] font-bold text-xs"
-                    >
-                      Xem trong Thư viện
-                    </button>
-                  </div>
+                  <button
+                    onClick={() => setCurrentView("gallery")}
+                    className="px-3.5 py-1.5 rounded-lg bg-[#FFD200] text-[#081C15] font-black text-xs uppercase"
+                  >
+                    Xem trong Thư viện
+                  </button>
                 </div>
               )}
 
@@ -1126,7 +1588,6 @@ export default function DashboardPage() {
       {modalVideo && (
         <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4">
           <div className="relative bg-[#0E291E] border-2 border-[#FFD200]/50 rounded-3xl max-w-lg w-full p-6 shadow-2xl flex flex-col items-center">
-            {/* Close Button */}
             <button
               onClick={() => setModalVideo(null)}
               className="absolute top-4 right-4 p-2 rounded-full bg-[#081C15] text-[#EBF8F2] hover:text-[#FF334B] border border-[#EBF8F2]/20 transition"
@@ -1143,7 +1604,6 @@ export default function DashboardPage() {
               </p>
             </div>
 
-            {/* Video 9:16 Cinema Player */}
             <div className="relative w-full max-w-[320px] aspect-[9/16] bg-black rounded-2xl overflow-hidden border border-[#EBF8F2]/30 shadow-2xl">
               <video
                 src={modalVideo.url}
@@ -1154,7 +1614,6 @@ export default function DashboardPage() {
               />
             </div>
 
-            {/* Modal Bottom Actions */}
             <div className="w-full mt-4 flex items-center justify-between gap-3">
               <a
                 href={modalVideo.url}

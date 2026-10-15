@@ -1,14 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import fs from "node:fs";
 import path from "node:path";
-import { exec } from "node:child_process";
-import { promisify } from "node:util";
-
-const execAsync = promisify(exec);
+import { spawn } from "node:child_process";
 
 function getRootDir(): string {
-  // If running from dashboard directory, root is ..
-  // If running from repo root, root is .
   const current = process.cwd();
   if (fs.existsSync(path.join(current, "make-video.mjs"))) {
     return current;
@@ -25,7 +20,7 @@ function slugify(text: string): string {
     .toString()
     .toLowerCase()
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "") // Bỏ dấu tiếng Việt
+    .replace(/[\u0300-\u036f]/g, "")
     .replace(/[đĐ]/g, "d")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
@@ -39,6 +34,8 @@ export async function POST(req: NextRequest) {
       title,
       category = "Kiến thức bóng đá",
       channel = "Phía sau sân cỏ",
+      provider = "vieneu",
+      voice = "Minh Đức",
       left,
       right,
       script,
@@ -46,15 +43,24 @@ export async function POST(req: NextRequest) {
     } = body;
 
     if (!title || !title.trim()) {
-      return NextResponse.json({ error: "Tiêu đề không được để trống" }, { status: 400 });
+      return new Response(JSON.stringify({ error: "Tiêu đề không được để trống" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
     }
 
     if (!left?.name || !right?.name) {
-      return NextResponse.json({ error: "Vui lòng nhập đầy đủ tên Concept A và B" }, { status: 400 });
+      return new Response(JSON.stringify({ error: "Vui lòng nhập đầy đủ tên Concept A và B" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
     }
 
     if (!Array.isArray(script) || script.length === 0) {
-      return NextResponse.json({ error: "Kịch bản phải có ít nhất 1 câu thoại" }, { status: 400 });
+      return new Response(JSON.stringify({ error: "Kịch bản phải có ít nhất 1 câu thoại" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
     }
 
     const slug = (customSlug && customSlug.trim())
@@ -68,11 +74,13 @@ export async function POST(req: NextRequest) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
     fs.mkdirSync(OUTPUT_DIR, { recursive: true });
 
-    // Cấu trúc JSON chuẩn data-driven cho engine
+    // Payload chuẩn
     const videoPayload = {
       slug,
       category,
       channel,
+      provider,
+      voice,
       title,
       left: {
         name: left.name.trim().toUpperCase(),
@@ -99,39 +107,149 @@ export async function POST(req: NextRequest) {
     const jsonPath = path.join(DATA_DIR, `${slug}.json`);
     fs.writeFileSync(jsonPath, JSON.stringify(videoPayload, null, 2), "utf8");
 
-    // Thực thi lệnh node make-video.mjs data/<slug>.json từ thư mục ROOT_DIR
-    const command = `node make-video.mjs "data/${slug}.json"`;
+    // Tạo SSE ReadableStream để truyền log và tiến trình thời gian thực
+    const encoder = new TextEncoder();
 
-    console.log(`[API /api/generate] Executing in ${ROOT_DIR}: ${command}`);
+    const stream = new ReadableStream({
+      start(controller) {
+        const sendEvent = (dataObj: Record<string, unknown>) => {
+          try {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify(dataObj)}\n\n`));
+          } catch {}
+        };
 
-    const { stdout, stderr } = await execAsync(command, {
-      cwd: ROOT_DIR,
-      timeout: 300000, // 5 phút tối đa
-      env: {
-        ...process.env,
+        // Gửi trạng thái khởi đầu
+        sendEvent({
+          type: "progress",
+          percent: 5,
+          phase: "start",
+          message: `Đã lưu kịch bản vào data/${slug}.json. Đang khởi động engine...`,
+        });
+
+        // Spawn child process
+        const scriptFile = path.join(/*turbopackIgnore: true*/ ROOT_DIR, "make-video.mjs");
+        const command = `node "${scriptFile}" "data/${slug}.json"`;
+        const child = spawn(command, {
+          cwd: ROOT_DIR,
+          shell: true,
+          env: { ...process.env },
+        });
+
+        const totalAudioCount = script.length || 12;
+
+        const handleChunk = (chunk: Buffer) => {
+          const text = chunk.toString();
+          sendEvent({ type: "log", text });
+
+          // 1. Parse Audio progress: [PROGRESS:AUDIO] 3/12
+          const audioMatch = text.match(/\[PROGRESS:AUDIO\]\s*(\d+)\/(\d+)/);
+          if (audioMatch) {
+            const current = parseInt(audioMatch[1], 10);
+            const total = parseInt(audioMatch[2], 10) || totalAudioCount;
+            const pct = Math.round((current / total) * 25);
+            sendEvent({
+              type: "progress",
+              percent: Math.max(5, pct),
+              phase: "audio",
+              current,
+              total,
+              message: `Đang tổng hợp giọng đọc Edge TTS: ${current}/${total} câu...`,
+            });
+            return;
+          }
+
+          // 2. Parse Build HTML progress: [PROGRESS:BUILD]
+          if (text.includes("[PROGRESS:BUILD]")) {
+            sendEvent({
+              type: "progress",
+              percent: 30,
+              phase: "build",
+              message: "Đã tổng hợp âm thanh. Đang cấu hình timeline GSAP...",
+            });
+            return;
+          }
+
+          // 3. Parse Render Frames progress: [PROGRESS:RENDER] 150/1521
+          const renderMatch = text.match(/\[PROGRESS:RENDER\]\s*(\d+)\/(\d+)/);
+          if (renderMatch) {
+            const currentFrame = parseInt(renderMatch[1], 10);
+            const totalFrames = parseInt(renderMatch[2], 10);
+            const framePct = totalFrames > 0 ? (currentFrame / totalFrames) * 65 : 0;
+            const totalPct = Math.min(98, Math.round(30 + framePct));
+            sendEvent({
+              type: "progress",
+              percent: totalPct,
+              phase: "render",
+              currentFrame,
+              totalFrames,
+              message: `Đang render MP4: ${currentFrame}/${totalFrames} frames (${Math.round((currentFrame / totalFrames) * 100)}%)...`,
+            });
+            return;
+          }
+
+          // 4. Parse Render Percent fallback: [PROGRESS:RENDER_PERCENT] 45%
+          const percentMatch = text.match(/\[PROGRESS:RENDER_PERCENT\]\s*(\d+)%/);
+          if (percentMatch) {
+            const p = parseInt(percentMatch[1], 10);
+            const totalPct = Math.min(98, Math.round(30 + (p * 0.65)));
+            sendEvent({
+              type: "progress",
+              percent: totalPct,
+              phase: "render",
+              message: `Đang render HyperFrames: ${p}%...`,
+            });
+            return;
+          }
+        };
+
+        child.stdout.on("data", handleChunk);
+        child.stderr.on("data", handleChunk);
+
+        child.on("close", (code) => {
+          const expectedMp4 = path.join(OUTPUT_DIR, `${slug}.mp4`);
+          const isSuccess = code === 0 && fs.existsSync(expectedMp4);
+
+          if (isSuccess) {
+            sendEvent({
+              type: "done",
+              percent: 100,
+              phase: "done",
+              message: "Xuất video MP4 thành công!",
+              slug,
+              videoUrl: `/api/videos/${slug}.mp4`,
+              filename: `${slug}.mp4`,
+            });
+          } else {
+            sendEvent({
+              type: "error",
+              message: `Render thất bại với mã lỗi ${code}. Vui lòng kiểm tra log chi tiết.`,
+            });
+          }
+          controller.close();
+        });
+
+        child.on("error", (err) => {
+          sendEvent({
+            type: "error",
+            message: `Lỗi hệ thống: ${err.message}`,
+          });
+          controller.close();
+        });
       },
     });
 
-    const expectedMp4 = path.join(OUTPUT_DIR, `${slug}.mp4`);
-    const isSuccess = fs.existsSync(expectedMp4);
-
-    return NextResponse.json({
-      success: isSuccess,
-      slug,
-      jsonPath: `data/${slug}.json`,
-      videoUrl: `/api/videos/${slug}.mp4`,
-      filename: `${slug}.mp4`,
-      log: stdout + (stderr ? `\nSTDERR:\n${stderr}` : ""),
+    return new Response(stream, {
+      headers: {
+        "Content-Type": "text/event-stream; charset=utf-8",
+        "Cache-Control": "no-cache, no-transform",
+        "Connection": "keep-alive",
+      },
     });
   } catch (error: unknown) {
-    const err = error as Error & { stdout?: string; stderr?: string };
-    console.error("[API /api/generate] Error:", err);
-    return NextResponse.json(
-      {
-        error: err.message || "Quá trình render thất bại",
-        log: (err.stdout || "") + "\n" + (err.stderr || ""),
-      },
-      { status: 500 }
-    );
+    const err = error as Error;
+    return new Response(JSON.stringify({ error: err.message || "Lỗi server" }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 }

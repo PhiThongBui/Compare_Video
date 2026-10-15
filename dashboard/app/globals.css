@@ -66,3 +66,50 @@ body {
     transparent 80px
   );
 }
+
+/* WYSIWYG Visual Keyword Badges inside editor */
+.kw-visual-yellow {
+  display: inline;
+  background: rgba(255, 210, 0, 0.22);
+  color: #FFD200 !important;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 210, 0, 0.6);
+  text-shadow: 0 0 10px rgba(255, 210, 0, 0.4);
+  margin: 0 2px;
+}
+
+.kw-visual-red {
+  display: inline;
+  background: rgba(255, 51, 75, 0.22);
+  color: #FF334B !important;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 51, 75, 0.6);
+  text-shadow: 0 0 10px rgba(255, 51, 75, 0.4);
+  margin: 0 2px;
+}
+
+.kw-visual-white {
+  display: inline;
+  background: rgba(255, 255, 255, 0.18);
+  color: #FFFFFF !important;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.4);
+  margin: 0 2px;
+}
+
+/* ContentEditable Placeholder styling */
+[contenteditable][data-placeholder]:empty::before {
+  content: attr(data-placeholder);
+  color: rgba(235, 248, 242, 0.35);
+  pointer-events: none;
+  cursor: text;
+}
+
+

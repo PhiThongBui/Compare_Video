@@ -32,7 +32,8 @@ const TTS_PROVIDER = (ENV.TTS_PROVIDER || "vieneu").toLowerCase();
 
 // --- VieNeu TTS config (only required when TTS_PROVIDER=vieneu) ---
 const VIENEU_API_URL = (ENV.VIENEU_API_URL || "http://127.0.0.1:8001").replace(/\/+$/, "");
-const VIENEU_VOICE = ENV.VIENEU_VOICE || "Minh Đức";
+const VIENEU_API_KEY = ENV.VIENEU_API_KEY || ENV.CIT_API_KEY || "";
+const VIENEU_VOICE = ENV.VIENEU_VOICE || "Hải Đăng";
 const VIENEU_SPEED = parseFloat(ENV.VIENEU_SPEED) || 1.0;
 
 // --- Vbee config (only required when TTS_PROVIDER=vbee) ---
@@ -91,16 +92,21 @@ async function generateEdgeSpeech(text, outPath) {
 
 async function generateVieNeuSpeech(text, outPath) {
   const url = `${VIENEU_API_URL}/api/tts/generate`;
+  const headers = {
+    "Content-Type": "application/json",
+  };
+  if (VIENEU_API_KEY) {
+    headers["X-API-Key"] = VIENEU_API_KEY;
+  }
   const res = await fetch(url, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers,
     body: JSON.stringify({
       text,
-      voice_id: VIENEU_VOICE || undefined,
+      voice_id: VIENEU_VOICE || "Hải Đăng",
       speed: VIENEU_SPEED,
       format: "mp3",
+      use_pronunciation_dict: true,
     }),
   });
   if (!res.ok) {

@@ -18,6 +18,7 @@ export async function GET(
   req: NextRequest,
   context: { params: Promise<{ filename: string }> }
 ) {
+  let fileHandle: fs.promises.FileHandle | null = null;
   try {
     const { filename } = await context.params;
 
@@ -38,23 +39,18 @@ export async function GET(
     const fileSize = stat.size;
     const range = req.headers.get("range");
 
+    fileHandle = await fs.promises.open(filePath, "r");
+
     if (range) {
       const parts = range.replace(/bytes=/, "").split("-");
       const start = parseInt(parts[0], 10);
       const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
       const chunksize = end - start + 1;
 
-      const fileStream = fs.createReadStream(filePath, { start, end });
-      // Chuyển Node stream thành Web ReadableStream
-      const stream = new ReadableStream({
-        start(controller) {
-          fileStream.on("data", (chunk) => controller.enqueue(chunk));
-          fileStream.on("end", () => controller.close());
-          fileStream.on("error", (err) => controller.error(err));
-        },
-      });
+      const buffer = Buffer.alloc(chunksize);
+      await fileHandle.read(buffer, 0, chunksize, start);
 
-      return new NextResponse(stream, {
+      return new NextResponse(buffer, {
         status: 206,
         headers: {
           "Content-Range": `bytes ${start}-${end}/${fileSize}`,
@@ -64,16 +60,8 @@ export async function GET(
         },
       });
     } else {
-      const fileStream = fs.createReadStream(filePath);
-      const stream = new ReadableStream({
-        start(controller) {
-          fileStream.on("data", (chunk) => controller.enqueue(chunk));
-          fileStream.on("end", () => controller.close());
-          fileStream.on("error", (err) => controller.error(err));
-        },
-      });
-
-      return new NextResponse(stream, {
+      const buffer = await fileHandle.readFile();
+      return new NextResponse(buffer, {
         status: 200,
         headers: {
           "Content-Length": fileSize.toString(),
@@ -88,5 +76,11 @@ export async function GET(
     return new NextResponse("Lỗi server khi phát video: " + error.message, {
       status: 500,
     });
+  } finally {
+    if (fileHandle) {
+      try {
+        await fileHandle.close();
+      } catch {}
+    }
   }
 }

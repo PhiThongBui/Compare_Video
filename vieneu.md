@@ -2,16 +2,17 @@
 
 ## 1. Tổng quan
 
-**VieNeu TTS** (tích hợp qua CIT Voice Studio TTS API) là mô hình Text-to-Speech tiếng Việt chạy cục bộ (local inference qua ONNX/PyTorch).
+**CIT Voice Studio** (tích hợp mô hình VieNeu-TTS) là nền tảng AI tổng hợp giọng nói tiếng Việt chất lượng phòng thu (Offline & On-Device):
 
-- **Mã nguồn ứng dụng**: [https://github.com/Cuongyd196/cit-voice-studio](https://github.com/Cuongyd196/cit-voice-studio)
-- **API URL mặc định**: `http://127.0.0.1:8001`
+- **Địa chỉ mặc định**: `http://127.0.0.1:8001`
 - **Swagger Docs**: [http://127.0.0.1:8001/docs](http://127.0.0.1:8001/docs)
 - **OpenAPI Schema**: [http://127.0.0.1:8001/openapi.json](http://127.0.0.1:8001/openapi.json)
-- **Ưu điểm**:
-  - Không tốn chi phí API, không giới hạn request/phút từ các dịch vụ đám mây.
-  - Phản hồi đồng bộ tức thì (POST trả thẳng stream audio MP3/WAV, không cần polling qua `request_id`).
-  - Chất lượng âm thanh 48 kHz sắc nét, tự nhiên, đa dạng vùng miền (Bắc, Trung, Nam).
+- **Đặc điểm nổi bật**:
+  - Không tốn chi phí API, không giới hạn request/phút.
+  - Phản hồi đồng bộ tức thì, độ trễ cực thấp (TTFA ~100-300ms) qua giao thức Chunked Streaming.
+  - Chất lượng âm thanh chuẩn phòng thu **48 kHz** (VieNeu-TTS v3 Turbo), đa dạng vùng miền (Bắc, Trung, Nam).
+  - Hỗ trợ **Thẻ cảm xúc** (`[cười]`, `[hắng giọng]`, `[thở dài]`) và **Thẻ nghỉ** (`[nghỉ 1s]`, `[nghỉ 2s]`).
+  - Hỗ trợ **Từ điển phát âm** và giọng nhân bản (Clone Voice) được tạo trong ứng dụng.
 
 ---
 
@@ -21,27 +22,32 @@ Tại file `.env` ở thư mục gốc của repository:
 
 ```env
 # ── TTS Provider ─────────────────────────────────────────────
-# "vieneu" = VieNeu TTS (local) | "edge" = Edge TTS (miễn phí) | "vbee" = Vbee TTS
+# "vieneu" = VieNeu TTS (local / CIT Voice Studio) | "edge" = Edge TTS (miễn phí) | "vbee" = Vbee TTS
 TTS_PROVIDER=vieneu
 
 # ── VieNeu TTS (chỉ cần khi TTS_PROVIDER=vieneu) ────────────
 VIENEU_API_URL=http://127.0.0.1:8001
-VIENEU_VOICE=Minh Đức
+# API Key (chỉ cần khi gọi tới máy khác trong mạng LAN)
+VIENEU_API_KEY=
+# Giọng đọc mặc định: Hải Đăng, Adam bựa, Trúc Ly, Thiện Minh, Mai Anh, Thùy Dung...
+VIENEU_VOICE=Hải Đăng
+# Tốc độ đọc (1.0 = chuẩn, từ 0.5 đến 2.0)
 VIENEU_SPEED=1.0
 ```
 
 | Biến | Mặc định | Ý nghĩa |
 |---|---|---|
 | `TTS_PROVIDER` | `vieneu` | Chọn provider sinh voiceover (`vieneu`, `edge`, hoặc `vbee`). |
-| `VIENEU_API_URL` | `http://127.0.0.1:8001` | Địa chỉ server CIT Voice Studio TTS API đang chạy. |
-| `VIENEU_VOICE` | `Minh Đức` | Tên giọng đọc (xem bảng bên dưới). |
-| `VIENEU_SPEED` | `1.0` | Tốc độ đọc (1.0 = chuẩn, 1.1 = nhanh hơn 10%). |
+| `VIENEU_API_URL` | `http://127.0.0.1:8001` | Địa chỉ server CIT Voice Studio đang chạy. |
+| `VIENEU_API_KEY` | *(trống)* | Khoá xác thực (chỉ cần khi bật *Cho máy khác truy cập* qua mạng LAN). |
+| `VIENEU_VOICE` | `Hải Đăng` | Tên giọng đọc (phân biệt dấu tiếng Việt). |
+| `VIENEU_SPEED` | `1.0` | Tốc độ đọc (1.0 = chuẩn). |
 
 ---
 
-## 3. Các API Endpoints
+## 3. Các Endpoint API Chính
 
-### 3.1. Kiểm tra trạng thái hệ thống
+### 3.1. Kiểm tra trạng thái máy chủ - `GET /health`
 
 ```http
 GET /health
@@ -56,83 +62,101 @@ GET /health
   "engine": "VieNeu-TTS-v3-Turbo (int8)",
   "backend": "onnx",
   "precision": "int8",
-  "device": "cpu"
+  "device": "cpu",
+  "languages": [],
+  "supports_cloning": true
 }
 ```
 
-### 3.2. Lấy danh sách giọng đọc
+### 3.2. Lấy danh sách giọng đọc - `GET /voices`
 
 ```http
 GET /voices
 ```
 
-Trả về mảng JSON chứa thông tin chi tiết từng giọng: `id`, `name`, `gender`, `region`, `description`.
+Trả về mảng JSON chứa 25 giọng mặc định của VieNeu-TTS v3 Turbo cùng các giọng nhân bản (nếu người dùng đã clone trong app).
 
-### 3.3. Sinh Voiceover (Generate TTS)
+### 3.3. Sinh Voiceover - `POST /api/tts/generate`
 
 ```http
 POST /api/tts/generate
 Content-Type: application/json
 ```
 
-**Body JSON:**
+**Request Body:**
 ```json
 {
-  "text": "Chào mừng bạn đến với kênh so sánh kiến thức.",
-  "voice_id": "Minh Đức",
+  "text": "Chào mừng bạn đến với kênh so sánh kiến thức. [cười] Hôm nay có một chủ đề rất thú vị! [nghỉ 1s] Hãy cùng khám phá.",
+  "voice_id": "Hải Đăng",
   "speed": 1.0,
   "temperature": 0.7,
-  "silence_duration": 0.2,
-  "format": "mp3"
+  "format": "mp3",
+  "use_pronunciation_dict": true
 }
 ```
 
-**Headers phản hồi quan trọng:**
-- `Content-Type`: `audio/mpeg` (nếu `format: "mp3"`) hoặc `audio/wav`.
-- `x-duration-seconds`: Thời lượng âm thanh tính bằng giây (ví dụ: `2.45`).
-- `x-elapsed-seconds`: Thời gian xử lý của mô hình.
+**Response Headers quan trọng:**
+- `X-Duration-Seconds`: Thời lượng audio (giây).
+- `X-Elapsed-Seconds`: Thời gian AI tạo audio.
+- `X-RTF`: Real-Time Factor (< 1 là nhanh hơn thời gian thực).
+- `X-Sample-Rate`: Tần số âm thanh (48000).
+
+### 3.4. Sinh Voiceover kèm Phụ đề SRT - `POST /api/tts/generate-with-subtitles`
+
+Trả về JSON gồm `audio_base64`, `srt` và mảng `cues` đo độ dài audio từng câu chuẩn xác.
+
+### 3.5. Streaming TTS thời gian thực - `GET /stream`
+
+```http
+GET /stream?text=Xin+chào&voice_id=Hải+Đăng
+```
+
+Phát âm thanh dạng WAV chunked trực tiếp với độ trễ chỉ 100-300ms.
 
 ---
 
-## 4. Danh sách giọng đọc có sẵn
+## 4. Thẻ Cảm Xúc & Thẻ Nghỉ
+
+Hỗ trợ trực tiếp trong văn bản `text` gửi tới API:
+
+- `[cười]`: Thêm biểu cảm vui tươi, tiếng cười tự nhiên.
+- `[hắng giọng]`: Thêm động tác hắng giọng, chuẩn bị nói hoặc ngắt nhịp trịnh trọng.
+- `[thở dài]`: Thêm hơi thở dài, trầm ngâm hoặc thất vọng nhẹ.
+- `[nghỉ 1s]`, `[nghỉ 2s]`, `[nghỉ 500ms]`: Chèn khoảng im lặng chuẩn xác (tối đa 10 giây mỗi thẻ). Không bị đọc thành tiếng.
+
+*Ví dụ:*
+```text
+"AI tạo sinh [nghỉ 1.5s] đang thay đổi thế giới bóng đá! [cười] Bạn đã sẵn sàng chưa?"
+```
+
+---
+
+## 5. Danh Sách 25 Giọng Đọc Có Sẵn (VieNeu-TTS v3 Turbo - 48 kHz)
 
 | Tên giọng (`VIENEU_VOICE`) | Giới tính | Miền | Phong cách |
 |---|---|---|---|
-| **Minh Đức** *(Mặc định)* | Nam | Bắc | Phong cách tin tức · 48 kHz |
-| **Phạm Tuyên** | Nam | Bắc | Phong cách tự nhiên · 48 kHz |
-| **Thanh Bình** | Nam | Bắc | Phong cách kể chuyện · 48 kHz |
-| **Trúc Ly** | Nữ | Bắc | Phong cách tự nhiên · 48 kHz |
-| **Ngọc Linh** | Nữ | Bắc | Phong cách kể chuyện · 48 kHz |
-| **Đoan Trang** | Nữ | Bắc | Phong cách tự nhiên · 48 kHz |
+| **Hải Đăng** *(Mặc định)* | Nam | Bắc | Phong cách tự nhiên · 48 kHz |
+| **Adam bựa** | Nam | Bắc | Phong cách tự nhiên, hài hước · 48 kHz |
+| **Trúc Ly** | Nữ | Bắc | Phong cách tự nhiên, truyền cảm · 48 kHz |
+| **Thiện Minh** | Nam | Bắc | Phong cách kể chuyện · 48 kHz |
 | **Mai Anh** | Nữ | Bắc | Phong cách tin tức · 48 kHz |
-| **Quỳnh Anh** | Nữ | Bắc | Phong cách đọc truyện · 48 kHz |
-| **Ngọc Huyền** | Nữ | Bắc | Giọng đọc tự nhiên · 48 kHz |
-| **Thái Sơn** | Nam | Nam | Phong cách kể chuyện · 48 kHz |
-| **Xuân Vĩnh** | Nam | Nam | Phong cách tự nhiên · 48 kHz |
-| **Minh Triết** | Nam | Nam | Phong cách tin tức · 48 kHz |
-| **Đức Trí** | Nam | Nam | Phong cách đọc truyện · 48 kHz |
-| **Adam** | Nam | Nam | Giọng đọc tự nhiên · 48 kHz |
-| **Thục Đoan** | Nữ | Nam | Phong cách kể chuyện · 48 kHz |
 | **Thùy Dung** | Nữ | Nam | Phong cách tin tức · 48 kHz |
-| **Mỹ Duyên** | Nữ | Nam | Phong cách đọc truyện · 48 kHz |
-| **Kim Thanh** | Nữ | Nam | Phong cách đọc truyện · 48 kHz |
+| **Thiền Tâm Đức** | Nam | Bắc | Phong cách kể chuyện · 48 kHz |
+| **Ngọc Huyền** | Nữ | Bắc | Giọng đọc tự nhiên · 48 kHz |
 | **Quang Sơn** | Nam | Trung | Phong cách tự nhiên · 48 kHz |
 | **Ngọc Trân** | Nữ | Trung | Phong cách tự nhiên · 48 kHz |
-
----
-
-## 5. Thử nghiệm nhanh bằng Node.js
-
-Chạy lệnh terminal từ thư mục bất kỳ:
-
-```bash
-node -e "fetch('http://127.0.0.1:8001/api/tts/generate', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ text: 'Xin chào, đây là kiểm tra VieNeu TTS.', voice_id: 'Minh Đức', format: 'mp3' })
-}).then(async r => {
-  const fs = require('fs');
-  fs.writeFileSync('test.mp3', Buffer.from(await r.arrayBuffer()));
-  console.log('Đã tạo file test.mp3 thành công!');
-})"
-```
+| **Minh Đức** | Nam | Bắc | Phong cách tin tức · 48 kHz |
+| **Phạm Tuyên** | Nam | Bắc | Phong cách tự nhiên · 48 kHz |
+| **Thái Sơn** | Nam | Nam | Phong cách kể chuyện · 48 kHz |
+| **Xuân Vĩnh** | Nam | Bắc | Phong cách tự nhiên · 48 kHz |
+| **Thanh Bình** | Nam | Bắc | Phong cách kể chuyện · 48 kHz |
+| **Ngọc Linh** | Nữ | Bắc | Phong cách kể chuyện · 48 kHz |
+| **Đoan Trang** | Nữ | Bắc | Phong cách tự nhiên · 48 kHz |
+| **Thục Đoan** | Nữ | Nam | Phong cách kể chuyện · 48 kHz |
+| **Minh Triết** | Nam | Nam | Phong cách tin tức · 48 kHz |
+| **Mỹ Duyên** | Nữ | Nam | Phong cách đọc truyện · 48 kHz |
+| **Quỳnh Anh** | Nữ | Bắc | Phong cách đọc truyện · 48 kHz |
+| **Đức Trí** | Nam | Nam | Phong cách đọc truyện · 48 kHz |
+| **Kim Thanh** | Nữ | Nam | Phong cách đọc truyện · 48 kHz |
+| **Adam** | Nam | Nam | Giọng đọc tự nhiên · 48 kHz |
+| **Quốc Tuấn** | Nam | Bắc | Phong cách tự nhiên · 48 kHz |

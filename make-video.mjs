@@ -58,6 +58,10 @@ function loadEnv() {
 
 const ENV = loadEnv();
 const EDGE_VOICE = ENV.EDGE_VOICE || "vi-VN-NamMinhNeural";
+const VIENEU_API_URL = (ENV.VIENEU_API_URL || "http://127.0.0.1:8001").replace(/\/+$/, "");
+const VIENEU_API_KEY = ENV.VIENEU_API_KEY || ENV.CIT_API_KEY || "";
+const VIENEU_VOICE = ENV.VIENEU_VOICE || "Hải Đăng";
+const DEFAULT_PROVIDER = ENV.TTS_PROVIDER || "vieneu";
 const CHANNEL_DEFAULT = ENV.CHANNEL || "Phía sau sân cỏ";
 
 // ---------- 2. Football SVG Icon Library Presets ----------
@@ -159,26 +163,73 @@ function resolveIcon(item) {
 // ---------- 3. Voice Synthesis with Retry ----------
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function generateSingleVoice(text, outPath) {
-  const tts = new MsEdgeTTS();
-  await tts.setMetadata(EDGE_VOICE, OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3);
-  const { audioStream } = tts.toStream(text, { rate: "+10%" });
-  return new Promise((resolve, reject) => {
-    const chunks = [];
-    audioStream.on("data", (chunk) => chunks.push(chunk));
-    audioStream.on("error", reject);
-    audioStream.on("close", () => {
-      fs.writeFileSync(outPath, Buffer.concat(chunks));
-      resolve();
+async function generateSingleVoice(text, outPath, provider = "vieneu", voice = "Hải Đăng") {
+  if (provider === "vieneu") {
+    const headers = { "Content-Type": "application/json" };
+    if (VIENEU_API_KEY) {
+      headers["X-API-Key"] = VIENEU_API_KEY;
+    }
+
+    const res = await fetch(`${VIENEU_API_URL}/api/tts/generate`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        text,
+        voice_id: voice || VIENEU_VOICE || "Hải Đăng",
+        speed: 1.0,
+        format: "mp3",
+        use_pronunciation_dict: true,
+      }),
     });
-  });
+    if (!res.ok) {
+      const errText = await res.text().catch(() => "");
+      throw new Error(`VieNeu TTS API tại ${VIENEU_API_URL} trả về lỗi ${res.status}: ${res.statusText} ${errText}`);
+    }
+    const arrayBuffer = await res.arrayBuffer();
+    fs.writeFileSync(outPath, Buffer.from(arrayBuffer));
+  } else {
+    const tts = new MsEdgeTTS();
+    const v = voice || EDGE_VOICE;
+    await tts.setMetadata(v, OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3);
+    const { audioStream } = tts.toStream(text, { rate: "+10%" });
+    return new Promise((resolve, reject) => {
+      const chunks = [];
+      audioStream.on("data", (chunk) => chunks.push(chunk));
+      audioStream.on("error", reject);
+      audioStream.on("close", () => {
+        fs.writeFileSync(outPath, Buffer.concat(chunks));
+        resolve();
+      });
+    });
+  }
 }
 
-async function synthesizeAllLines(scriptLines, voDir) {
+async function synthesizeAllLines(scriptLines, voDir, customProvider, customVoice) {
   fs.mkdirSync(voDir, { recursive: true });
   const durations = {};
+  const provider = customProvider || DEFAULT_PROVIDER;
+  const voice = customVoice || (provider === "vieneu" ? VIENEU_VOICE : EDGE_VOICE);
+  const cacheKey = `${provider}:${voice}`;
 
-  console.log(`\n🎙️  Bắt đầu sinh giọng đọc (Edge TTS: ${EDGE_VOICE})...`);
+  // Cache invalidation if voice or provider changed
+  const voiceFile = path.join(voDir, "voice.txt");
+  let prevVoice = "";
+  if (fs.existsSync(voiceFile)) {
+    try { prevVoice = fs.readFileSync(voiceFile, "utf8").trim(); } catch {}
+  }
+  if (prevVoice !== cacheKey) {
+    try {
+      const files = fs.readdirSync(voDir);
+      for (const f of files) {
+        if (f.startsWith("line-") && f.endsWith(".mp3")) {
+          fs.unlinkSync(path.join(voDir, f));
+        }
+      }
+    } catch {}
+    fs.writeFileSync(voiceFile, cacheKey, "utf8");
+  }
+
+  console.log(`\n🎙️  Bắt đầu sinh giọng đọc (${provider.toUpperCase()}: ${voice})...`);
 
   for (let i = 0; i < scriptLines.length; i++) {
     const n = i + 1;
@@ -200,21 +251,24 @@ async function synthesizeAllLines(scriptLines, voDir) {
       while (attempts < 5) {
         try {
           attempts++;
-          await generateSingleVoice(textToSpeak, outPath);
+          await generateSingleVoice(textToSpeak, outPath, provider, voice);
           break;
         } catch (err) {
           if (attempts >= 5) throw err;
           process.stdout.write(`(retry ${attempts})... `);
-          await sleep(3000);
+          await sleep(2000);
         }
       }
-      await sleep(1200); // Tránh rate limit 429
+      if (provider !== "vieneu") {
+        await sleep(1000);
+      }
     }
 
     const buffer = fs.readFileSync(outPath);
     const durSeconds = Number((getMp3Duration(buffer) / 1000).toFixed(2));
     durations[`line-${n}`] = durSeconds;
     console.log(`✔ ${durSeconds}s`);
+    console.log(`[PROGRESS:AUDIO] ${n}/${scriptLines.length}`);
   }
 
   fs.writeFileSync(path.join(voDir, "durations.json"), JSON.stringify(durations, null, 2));
@@ -288,6 +342,7 @@ function buildHtml(data, VO, rootDuration) {
   const targetHtmlPath = path.join(TEMPLATE_DIR, "index.html");
   fs.writeFileSync(targetHtmlPath, html, "utf8");
   console.log(`\n📝 Đã inject dữ liệu vào: template/index.html (Tổng thời lượng: ${rootDuration}s)`);
+  console.log(`[PROGRESS:BUILD] 100%`);
 }
 
 // ---------- 6. Main Process Single Video ----------
@@ -305,9 +360,12 @@ async function processVideo(jsonFile, options = {}) {
   const data = JSON.parse(raw);
   const slug = data.slug || path.basename(filePath, ".json");
 
+  const provider = data.provider || (data.voice?.includes("Neural") ? "edge" : DEFAULT_PROVIDER);
+  const voice = data.voice || (provider === "vieneu" ? VIENEU_VOICE : EDGE_VOICE);
+
   // 1. Synthesize Audio
   const voDir = path.join(TEMPLATE_DIR, "assets", "vo");
-  const durations = await synthesizeAllLines(data.script, voDir);
+  const durations = await synthesizeAllLines(data.script, voDir, provider, voice);
 
   // 2. Compute Timing
   const { VO, rootDuration } = calculateTiming(data.script.length, durations);
@@ -325,20 +383,71 @@ async function processVideo(jsonFile, options = {}) {
   // 5. Render Video
   if (!options.noRender) {
     fs.mkdirSync(OUTPUT_DIR, { recursive: true });
-    const outputMp4 = path.join(OUTPUT_DIR, `${slug}.mp4`);
+    const finalOutputMp4 = path.join(OUTPUT_DIR, `${slug}.mp4`);
+    const tempOutputMp4 = path.join(OUTPUT_DIR, `.build-${slug}-${Date.now()}.mp4`);
 
     console.log(`\n🎬 Đang render video MP4 qua HyperFrames engine...`);
-    console.log(`   Lưu file tại: output/${slug}.mp4`);
+    console.log(`   Đích xuất: output/${slug}.mp4`);
 
-    const renderCmd = `npx --yes hyperframes@0.7.58 render template -o "${outputMp4}"`;
-    const res = spawnSync(renderCmd, { stdio: "inherit", shell: true });
+    await new Promise((resolve, reject) => {
+      const child = spawn(
+        "npx",
+        ["--yes", "hyperframes@0.7.58", "render", "template", "-o", tempOutputMp4],
+        { stdio: ["inherit", "pipe", "pipe"], shell: true }
+      );
 
-    if (res.status === 0) {
-      console.log(`\n🎉 XUẤT VIDEO THÀNH CÔNG!`);
-      console.log(`👉 File MP4: ${outputMp4}`);
-    } else {
-      console.error(`\n❌ Render thất bại với exit code: ${res.status}`);
-    }
+      const processOutput = (chunk) => {
+        const text = chunk.toString();
+        process.stdout.write(text);
+
+        // Regex for frame progress e.g. "120/1521" or "Rendered 120/1521" or "(8%)"
+        const frameMatch = text.match(/(\d+)\s*\/\s*(\d+)/);
+        if (frameMatch) {
+          console.log(`[PROGRESS:RENDER] ${frameMatch[1]}/${frameMatch[2]}`);
+        } else {
+          const percentMatch = text.match(/(\d+)%/);
+          if (percentMatch) {
+            console.log(`[PROGRESS:RENDER_PERCENT] ${percentMatch[1]}%`);
+          }
+        }
+      };
+
+      child.stdout.on("data", processOutput);
+      child.stderr.on("data", processOutput);
+
+      child.on("close", async (code) => {
+        if (code === 0 && fs.existsSync(tempOutputMp4)) {
+          try {
+            // An toàn ghi đè file cuối cùng trên Windows
+            for (let i = 0; i < 10; i++) {
+              try {
+                if (fs.existsSync(finalOutputMp4)) {
+                  try { fs.unlinkSync(finalOutputMp4); } catch {}
+                }
+                fs.renameSync(tempOutputMp4, finalOutputMp4);
+                break;
+              } catch (e) {
+                if (i === 9) {
+                  fs.copyFileSync(tempOutputMp4, finalOutputMp4);
+                  try { fs.unlinkSync(tempOutputMp4); } catch {}
+                } else {
+                  await sleep(800);
+                }
+              }
+            }
+            console.log(`\n🎉 XUẤT VIDEO THÀNH CÔNG!`);
+            console.log(`👉 File MP4: ${finalOutputMp4}`);
+            console.log(`[PROGRESS:DONE] ${slug}.mp4`);
+            resolve();
+          } catch (finalizeErr) {
+            reject(new Error(`Không thể hoàn tất file video: ${finalizeErr.message}`));
+          }
+        } else {
+          console.error(`\n❌ Render thất bại với exit code: ${code}`);
+          reject(new Error(`Render thất bại với exit code ${code}`));
+        }
+      });
+    });
   } else {
     console.log(`\n⚡ Chế độ --no-render: Đã bỏ qua bước render MP4.`);
   }
