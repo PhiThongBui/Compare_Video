@@ -157,6 +157,29 @@ function resolveIcon(item) {
   if (!item) return ICON_PRESETS.default;
   if (item.svg && item.svg.trim().startsWith("<svg")) return item.svg;
   if (item.icon && ICON_PRESETS[item.icon]) return ICON_PRESETS[item.icon];
+
+  if (item.icon && typeof item.icon === "string" && item.icon.trim()) {
+    const rawIcon = item.icon.trim();
+    // Image URL (Avatar / Logo)
+    if (rawIcon.startsWith("http://") || rawIcon.startsWith("https://") || rawIcon.startsWith("data:image/")) {
+      const clipId = "clipCircle_" + Math.random().toString(36).substring(2, 9);
+      return `
+    <svg width="240" height="280" viewBox="0 0 240 280" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <clipPath id="${clipId}"><circle cx="120" cy="140" r="85" /></clipPath>
+      </defs>
+      <circle cx="120" cy="140" r="90" fill="#143D2E" stroke="#FFD200" stroke-width="4"/>
+      <image href="${rawIcon}" x="35" y="55" width="170" height="170" clip-path="url(#${clipId})" preserveAspectRatio="xMidYMid slice"/>
+    </svg>`;
+    }
+    // Any Emoji or Unicode symbol (🐐, ⚡, 🤖, 👑, 📺, 🧤, ⚽, 🏆,...)
+    return `
+    <svg width="240" height="280" viewBox="0 0 240 280" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="120" cy="140" r="90" fill="#143D2E" stroke="#FFD200" stroke-width="3" opacity="0.6"/>
+      <text x="120" y="165" font-size="105" text-anchor="middle" dominant-baseline="middle" font-family="'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif">${rawIcon}</text>
+    </svg>`;
+  }
+
   return ICON_PRESETS.default;
 }
 

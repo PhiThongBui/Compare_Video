@@ -1,0 +1,66 @@
+{
+  "slug": "dai-ngo-khung-ronaldo-vs-messi",
+  "category": "Tài chính & Chuyển nhượng",
+  "channel": "Phía sau sân cỏ",
+  "provider": "vieneu",
+  "voice": "Thiện Minh",
+  "title": "Đãi ngộ khủng: Ronaldo vs Messi",
+  "left": {
+    "name": "LƯƠNG RONALDO AL NASSR",
+    "icon": "⚡"
+  },
+  "right": {
+    "name": "ĐÃI NGỘ MESSI MIAMI",
+    "icon": "🐐"
+  },
+  "script": [
+    {
+      "tts": "Đây là thu nhập khủng khiếp của Cristiano Ronaldo tại câu lạc bộ Al Nassr.",
+      "caption": "Đây là thu nhập khủng khiếp của <span class=\"kw\" style=\"color: var(--accent-yellow)\">Cristiano Ronaldo</span> tại câu lạc bộ <span class=\"kw\" style=\"color: var(--accent-yellow)\">Al Nassr</span>."
+    },
+    {
+      "tts": "Còn đây là đãi ngộ không tưởng của Lionel Messi khi đặt chân tới Inter Miami.",
+      "caption": "Còn đây là đãi ngộ không tưởng của <span class=\"kw\" style=\"color: var(--accent-yellow)\">Lionel Messi</span> khi đặt chân tới <span class=\"kw\" style=\"color: var(--accent-yellow)\">Inter Miami</span>."
+    },
+    {
+      "tts": "Liệu cỗ máy kiếm tiền nào mới thực sự bá chủ trên thế giới bóng đá?",
+      "caption": "Liệu cỗ máy kiếm tiền nào mới thực sự bá chủ trên thế giới bóng đá?"
+    },
+    {
+      "tts": "Ronaldo đút túi con số kỷ lục 200 triệu euro mỗi mùa giải từ đại gia Ả Rập.",
+      "caption": "Ronaldo đút túi con số kỷ lục <span class=\"kw\" style=\"color: var(--accent-yellow)\">200 triệu euro</span> mỗi mùa giải từ đại gia Ả Rập."
+    },
+    {
+      "tts": "Khoản tiền này bao gồm lương cứng khổng lồ cùng vô số hợp đồng quảng cáo béo bở.",
+      "caption": "Khoản tiền này bao gồm lương cứng khổng lồ cùng vô số hợp đồng quảng cáo béo bở."
+    },
+    {
+      "tts": "Tính ra siêu sao người Bồ Đào Nha bỏ túi tới 6,3 euro cho mỗi giây hít thở.",
+      "caption": "Tính ra siêu sao người Bồ Đào Nha bỏ túi tới <span class=\"kw\" style=\"color: var(--accent-yellow)\">6,3 euro</span> cho mỗi giây hít thở."
+    },
+    {
+      "tts": "Messi nhận mức lương khiêm tốn hơn rơi vào khoảng 50 triệu đô la mỗi năm.",
+      "caption": "Messi nhận mức lương khiêm tốn hơn rơi vào khoảng <span class=\"kw\" style=\"color: var(--accent-yellow)\">50 triệu đô la</span> mỗi năm."
+    },
+    {
+      "tts": "Tuy nhiên El Pulga lại sở hữu cổ phần câu lạc bộ và chia sẻ doanh thu từ Apple.",
+      "caption": "Tuy nhiên El Pulga lại sở hữu cổ phần câu lạc bộ và chia sẻ doanh thu từ <span class=\"kw\" style=\"color: var(--accent-yellow)\">Apple</span>."
+    },
+    {
+      "tts": "Mỗi đăng ký bản quyền truyền hình MLS đều trực tiếp chảy vào tài khoản của siêu sao Argentina.",
+      "caption": "Mỗi đăng ký bản quyền truyền hình <span class=\"kw\" style=\"color: var(--accent-yellow)\">MLS</span> đều trực tiếp chảy vào tài khoản của siêu sao Argentina."
+    },
+    {
+      "tts": "Ronaldo nhận tiền mặt trao tay khổng lồ, còn Messi lại nắm giữ đế chế kinh doanh lâu dài.",
+      "caption": "Ronaldo nhận tiền mặt trao tay khổng lồ, còn Messi lại nắm giữ đế chế kinh doanh lâu dài."
+    },
+    {
+      "tts": "Một bên biến mình thành cầu thủ hưởng lương cao nhất lịch sử, một bên trở thành ông chủ bóng đá.",
+      "caption": "Một bên biến mình thành cầu thủ hưởng lương cao nhất lịch sử, một bên trở thành <span class=\"kw\" style=\"color: var(--accent-yellow)\">ông chủ bóng đá</span>."
+    },
+    {
+      "tts": "Giữa hai siêu sao, bạn nể phục cỗ máy kiếm tiền nào hơn? Hãy để lại ý kiến!",
+      "caption": "Giữa hai siêu sao, bạn nể phục cỗ máy kiếm tiền nào hơn? Hãy để lại ý kiến!"
+    }
+  ]
+}

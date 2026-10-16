@@ -61,24 +61,25 @@ QUY TẮC TỪ KHÓA (keywordsToHighlight):
 - Trích xuất 6 đến 12 từ/cụm từ quan trọng nhất xuất hiện trong 12 câu kịch bản (ví dụ: tên riêng, con số tài chính, danh hiệu, vị trí, thương hiệu).
 - Các từ trong keywordsToHighlight PHẢI xuất hiện CHÍNH XÁC trong nội dung các câu trên để hệ thống tự động bôi màu làm nổi bật trên màn hình.
 
-ICON HỢP LỆ (chọn 1 trong các id này cho iconA và iconB):
-- "money": Tài chính, tiền lương, giá trị chuyển nhượng, thu nhập
-- "trophy": Cúp vô địch, quả bóng vàng, danh hiệu, chiến tích
-- "jersey-player": Cầu thủ thi đấu, áo đấu, trang bị thể thao
-- "jersey-fan": Người hâm mộ, cổ động viên, áo fan
-- "tactics": Chiến thuật, sa bàn, huấn luyện viên, sơ đồ
-- "card-penalty": Thẻ phạt, trọng tài, VAR, tranh cãi, luật
-- "default": Quả bóng đá, chung chung
+QUY TẮC TỰ ĐỘNG CHỌN ICON / EMOJI ĐẠI DIỆN (iconA và iconB):
+- Hãy tự động phân tích tính chất đặc trưng của Concept A và Concept B để chọn 1 EMOJI DUY NHẤT (hoặc 1 mã icon ID) có tính biểu tượng trực quan mạnh mẽ nhất:
+  + Cầu thủ / Siêu sao: Messi ("🐐" hoặc "🔟"), Ronaldo ("⚡" hoặc "7️⃣"), Haaland ("🤖"), Mbappe ("🐢"), Cầu thủ chung ("🎽"), Thủ môn ("🧤"), Huấn luyện viên ("📋"), v.v.
+  + Đội bóng / Quốc gia: Real Madrid ("👑"), Barcelona ("🔵"), Đội bóng chung ("🛡️"), Cúp / Danh hiệu ("🏆").
+  + Chủ đề tài chính / chuyển nhượng / tiền lương: "💰" hoặc "money".
+  + Chủ đề công nghệ / trọng tài / VAR: "📺", "🟨", "card-penalty".
+  + Áo thi đấu: "jersey-player" (áo cầu thủ), "jersey-fan" (áo fan).
+  + Khái niệm khác: Sa bàn chiến thuật ("📋"), Trái bóng ("⚽"), Sức mạnh / Thể lực ("💪"), Tranh cãi ("🔥"), v.v.
+- Ưu tiên trả về 1 Emoji duy nhất sinh động (ví dụ: "🐐", "⚡", "🤖", "📺", "🏆", "💰", "👑") hoặc mã preset: "money", "trophy", "jersey-player", "jersey-fan", "tactics", "card-penalty", "default".
 
 ĐỊNH DẠNG ĐẦU RA BẮT BUỘC:
 Chỉ trả về JSON thuần túy (RAW JSON), KHÔNG bọc trong markdown backticks \`\`\`json, KHÔNG kèm văn bản mở đầu hay kết thúc:
 {
   "title": "Tiêu đề so sánh thu hút (dưới 50 ký tự)",
-  "category": "Tài chính & Chuyển nhượng",
+  "category": "Chuyên mục phù hợp (ví dụ: Siêu sao & Huyền thoại, Công nghệ & Trang bị, Tài chính & Chuyển nhượng, Chiến thuật, v.v.)",
   "conceptA": "TÊN VẾ A (VIẾT HOA, dưới 20 ký tự)",
   "conceptB": "TÊN VẾ B (VIẾT HOA, dưới 20 ký tự)",
-  "iconA": "money",
-  "iconB": "money",
+  "iconA": "🐐",
+  "iconB": "⚡",
   "script": [
     "Câu 1...",
     "Câu 2...",
@@ -112,9 +113,11 @@ function cleanJsonResponse(raw: string): string {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { idea } = body;
+    const { idea, refinePrompt, currentScript } = body;
 
-    if (!idea || !idea.trim()) {
+    const isRefinement = Boolean(refinePrompt && refinePrompt.trim() && currentScript);
+
+    if (!isRefinement && (!idea || !idea.trim())) {
       return NextResponse.json(
         { error: "Vui lòng nhập ý tưởng kịch bản so sánh (ví dụ: So sánh mức lương giữa Messi và Ronaldo)" },
         { status: 400 }
@@ -132,24 +135,82 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Xây dựng prompt phù hợp: Tạo mới hay Tinh chỉnh kịch bản cũ
+    let promptText = "";
+    if (isRefinement) {
+      const currentLines = Array.isArray(currentScript.script)
+        ? currentScript.script.map((line: string, idx: number) => `  Câu ${idx + 1}: "${line}"`).join("\n")
+        : "";
+
+      promptText = `BẠN ĐANG TRONG PHIÊN TINH CHỈNH / NÂNG CẤP KỊCH BẢN CŨ.
+Chủ đề / Đề tài: "${(idea || currentScript.title || "So sánh bóng đá").trim()}"
+
+KỊCH BẢN HIỆN TẠI (PHIÊN BẢN TRƯỚC ĐÓ):
+- Tiêu đề: "${currentScript.title || ""}"
+- Chuyên mục: "${currentScript.category || "Kiến thức bóng đá"}"
+- Concept A: "${currentScript.conceptA || ""}" (Icon hiện tại: "${currentScript.iconA || "default"}")
+- Concept B: "${currentScript.conceptB || ""}" (Icon hiện tại: "${currentScript.iconB || "default"}")
+- 12 câu kịch bản hiện thời:
+${currentLines}
+
+YÊU CẦU TINH CHỈNH CỦA NGƯỜI DÙNG:
+"${refinePrompt.trim()}"
+
+NHIỆM VỤ:
+Dựa trên kịch bản hiện tại và yêu cầu tinh chỉnh của người dùng, hãy viết lại hoặc điều chỉnh các câu kịch bản tương ứng để đáp ứng tốt nhất yêu cầu:
+1. Duy trì cấu trúc chuẩn 12 câu, format 3-zone, nhịp điệu bóng đá lôi cuốn.
+2. Cập nhật lại các câu cần sửa (hoặc toàn bộ nếu yêu cầu thay đổi phong cách, số liệu hay góc nhìn).
+3. Đề xuất iconA và iconB phù hợp nếu có thay đổi hoặc giữ nguyên emoji hiện có.
+4. Tự động trích xuất lại keywordsToHighlight chính xác theo 12 câu kịch bản mới này.
+5. Chỉ trả về RAW JSON đúng schema đã quy định, không kèm bất kỳ giải thích nào.`;
+    } else {
+      promptText = `Ý tưởng so sánh bóng đá của người dùng: "${idea.trim()}". Hãy tạo kịch bản 12 câu hoàn chỉnh đúng quy chuẩn JSON đã nêu.`;
+    }
+
     let rawOutput = "";
 
     // 1. Nếu là Gemini API Key (bắt đầu bằng AIza)
     if (apiKey.startsWith("AIza")) {
       const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({
-        model: "gemini-1.5-flash",
-        generationConfig: {
-          responseMimeType: "application/json",
-          temperature: 0.7,
-        },
-        systemInstruction: SYSTEM_PROMPT,
-      });
+      const configuredModel = process.env.GEMINI_MODEL;
+      const candidateModels = configuredModel
+        ? [configuredModel, "gemini-3.5-flash", "gemini-3.7-flash", "gemini-3.8-flash", "gemini-3.1-flash-lite"]
+        : [
+            "gemini-3.5-flash",
+            "gemini-3.7-flash",
+            "gemini-3.8-flash",
+            "gemini-3.1-flash-lite",
+            "gemini-3.5-flash-lite",
+          ];
 
-      const promptText = `Ý tưởng so sánh bóng đá của người dùng: "${idea.trim()}". Hãy tạo kịch bản 12 câu hoàn chỉnh đúng quy chuẩn JSON đã nêu.`;
-      const result = await model.generateContent(promptText);
-      const response = await result.response;
-      rawOutput = response.text();
+      let lastError: Error | null = null;
+      for (const modelName of candidateModels) {
+        try {
+          const model = genAI.getGenerativeModel({
+            model: modelName,
+            generationConfig: {
+              responseMimeType: "application/json",
+              temperature: 0.7,
+            },
+            systemInstruction: SYSTEM_PROMPT,
+          });
+
+          const result = await model.generateContent(promptText);
+          const response = await result.response;
+          rawOutput = response.text();
+          if (rawOutput) {
+            lastError = null;
+            break;
+          }
+        } catch (err: unknown) {
+          lastError = err as Error;
+          console.warn(`[Gemini model ${modelName} issue, trying next model]:`, lastError.message);
+        }
+      }
+
+      if (!rawOutput && lastError) {
+        throw lastError;
+      }
     } else {
       // 2. Mặc định là OpenAI (sk-...) hoặc OpenAI-compatible API
       const openai = new OpenAI({ apiKey });
@@ -161,7 +222,7 @@ export async function POST(req: NextRequest) {
           { role: "system", content: SYSTEM_PROMPT },
           {
             role: "user",
-            content: `Ý tưởng so sánh bóng đá: "${idea.trim()}". Hãy biên kịch thành video 12 câu hoàn chỉnh và trả về đúng định dạng JSON.`,
+            content: promptText,
           },
         ],
       });

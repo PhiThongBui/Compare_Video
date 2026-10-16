@@ -26,11 +26,102 @@ import {
   X,
   Wand2,
   Loader2,
+  History,
+  BookmarkPlus,
+  Layers,
+  Sparkle,
+  Copy,
+  ChevronUp,
 } from "lucide-react";
 
 interface ScriptLine {
   tts: string;
   caption: string;
+}
+
+export interface ScriptVersion {
+  id: string;
+  versionNumber: number;
+  timestamp: number;
+  label: string;
+  promptUsed: string;
+  isRefined?: boolean;
+  data: {
+    title: string;
+    category: string;
+    conceptA: string;
+    conceptB: string;
+    iconA: string;
+    iconB: string;
+    scriptLines: ScriptLine[];
+    keywordsToHighlight?: string[];
+  };
+}
+
+const VERSIONS_STORAGE_KEY = "pssc_script_versions_history_v1";
+
+function formatScriptForExternalAi(data: {
+  title: string;
+  category?: string;
+  conceptA?: string;
+  conceptB?: string;
+  iconA?: string;
+  iconB?: string;
+  scriptLines: ScriptLine[];
+  keywordsToHighlight?: string[];
+}): string {
+  const lines = data.scriptLines
+    .map((l, idx) => `Câu ${idx + 1}: ${l.tts || l.caption.replace(/<[^>]+>/g, "").trim()}`)
+    .filter((l) => !l.endsWith(": "))
+    .join("\n");
+
+  const keywords =
+    Array.isArray(data.keywordsToHighlight) && data.keywordsToHighlight.length > 0
+      ? `\nTừ khóa nổi bật: ${data.keywordsToHighlight.join(", ")}`
+      : "";
+
+  return `[KỊCH BẢN SO SÁNH BÓNG ĐÁ 12 CÂU - PHÍA SAU SÂN CỎ]
+Tiêu đề: ${data.title || "Chưa đặt"}
+Chuyên mục: ${data.category || "Kiến thức bóng đá"}
+Concept A: ${data.conceptA || ""} (Icon: ${data.iconA || "default"})
+Concept B: ${data.conceptB || ""} (Icon: ${data.iconB || "default"})
+
+12 CÂU KỊCH BẢN:
+${lines}${keywords}
+
+---
+GỢI Ý LỆNH TINH CHỈNH:
+(Bạn có thể chỉnh sửa trực tiếp nội dung trên hoặc gửi lệnh cho ChatGPT/Gemini tinh chỉnh theo ý muốn, sau đó dán kết quả vào ô AI Tinh Chỉnh trên hệ thống.)`;
+}
+
+function formatScriptAsJson(data: {
+  title: string;
+  category?: string;
+  conceptA?: string;
+  conceptB?: string;
+  iconA?: string;
+  iconB?: string;
+  scriptLines: ScriptLine[];
+  keywordsToHighlight?: string[];
+}): string {
+  const plainScript = data.scriptLines
+    .map((l) => l.tts || l.caption.replace(/<[^>]+>/g, "").trim())
+    .filter(Boolean);
+
+  return JSON.stringify(
+    {
+      title: data.title || "",
+      category: data.category || "Kiến thức bóng đá",
+      conceptA: data.conceptA || "",
+      conceptB: data.conceptB || "",
+      iconA: data.iconA || "default",
+      iconB: data.iconB || "default",
+      script: plainScript,
+      keywordsToHighlight: data.keywordsToHighlight || [],
+    },
+    null,
+    2
+  );
 }
 
 interface VideoItem {
@@ -70,15 +161,57 @@ interface VoiceOption {
 
 const STORAGE_KEY = "pssc_video_form_draft_v2";
 
-const ICON_OPTIONS = [
-  { id: "jersey-player", name: "Áo thi đấu Player (Cầu thủ)", emoji: "🎽" },
-  { id: "jersey-fan", name: "Áo người hâm mộ (Fan/Stadium)", emoji: "👕" },
-  { id: "tactics", name: "Sa bàn chiến thuật", emoji: "📋" },
-  { id: "trophy", name: "Cúp vô địch / Danh hiệu", emoji: "🏆" },
-  { id: "money", name: "Tài chính / Chuyển nhượng (€)", emoji: "💰" },
-  { id: "card-penalty", name: "Thẻ phạt Vàng & Đỏ", emoji: "🟨" },
-  { id: "default", name: "Quả bóng đá cổ điển", emoji: "⚽" },
+const ICON_PRESET_MAP: Record<string, string> = {
+  "jersey-player": "🎽",
+  "jersey-fan": "👕",
+  "tactics": "📋",
+  "trophy": "🏆",
+  "money": "💰",
+  "card-penalty": "🟨",
+  "default": "⚽",
+};
+
+const POPULAR_ICONS = [
+  { value: "🐐", label: "The GOAT (Messi/Pele...)" },
+  { value: "⚡", label: "Tốc độ / Sức mạnh (CR7/Mbappe)" },
+  { value: "🤖", label: "Cỗ máy ghi bàn (Haaland)" },
+  { value: "👑", label: "Nhà vua / Hoàng gia (Real Madrid)" },
+  { value: "⚽", label: "Bóng đá cổ điển" },
+  { value: "🏆", label: "Cúp vô địch / Quả bóng vàng" },
+  { value: "💰", label: "Tiền lương / Chuyển nhượng" },
+  { value: "📺", label: "Công nghệ VAR" },
+  { value: "🟨", label: "Thẻ phạt Trọng tài" },
+  { value: "🧤", label: "Găng tay Thủ môn" },
+  { value: "📋", label: "Sa bàn chiến thuật" },
+  { value: "jersey-player", label: "Áo thi đấu Player 🎽" },
+  { value: "jersey-fan", label: "Áo người hâm mộ 👕" },
+  { value: "🔥", label: "Nhiệt huyết / Derby" },
 ];
+
+function getDisplayEmoji(iconKey: string): string {
+  if (!iconKey) return "⚽";
+  return ICON_PRESET_MAP[iconKey] || iconKey;
+}
+
+function suggestIconForConcept(conceptName: string): string {
+  const lower = (conceptName || "").toLowerCase();
+  if (lower.includes("messi") || lower.includes("goat")) return "🐐";
+  if (lower.includes("ronaldo") || lower.includes("cr7") || lower.includes("tốc độ") || lower.includes("siêu sao")) return "⚡";
+  if (lower.includes("haaland") || lower.includes("cỗ máy")) return "🤖";
+  if (lower.includes("mbappe") || lower.includes("rùa")) return "🐢";
+  if (lower.includes("real") || lower.includes("vua") || lower.includes("madrid") || lower.includes("hoàng gia")) return "👑";
+  if (lower.includes("var") || lower.includes("màn hình") || lower.includes("video")) return "📺";
+  if (lower.includes("thẻ") || lower.includes("trọng tài") || lower.includes("phạt")) return "🟨";
+  if (lower.includes("tiền") || lower.includes("lương") || lower.includes("chuyển nhượng") || lower.includes("tài chính")) return "💰";
+  if (lower.includes("cúp") || lower.includes("vô địch") || lower.includes("bóng vàng") || lower.includes("danh hiệu")) return "🏆";
+  if (lower.includes("thủ môn") || lower.includes("găng")) return "🧤";
+  if (lower.includes("player") || lower.includes("cầu thủ")) return "jersey-player";
+  if (lower.includes("fan") || lower.includes("stadium") || lower.includes("cổ động")) return "jersey-fan";
+  if (lower.includes("chiến thuật") || lower.includes("sa bàn") || lower.includes("hlv") || lower.includes("pep") || lower.includes("klopp")) return "📋";
+  if (lower.includes("lửa") || lower.includes("derby") || lower.includes("nóng")) return "🔥";
+  if (lower.includes("thủ") || lower.includes("bê tông") || lower.includes("hậu vệ")) return "🛡️";
+  return "⚽";
+}
 
 const CATEGORIES = [
   "Công nghệ & Trang bị",
@@ -302,6 +435,39 @@ function CreateStudioInner() {
   const [isAiGenerating, setIsAiGenerating] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
   const [aiSuccessMessage, setAiSuccessMessage] = useState<string | null>(null);
+
+  // Script Version History & Refinement states
+  const [scriptVersions, setScriptVersions] = useState<ScriptVersion[]>([]);
+  const [activeVersionId, setActiveVersionId] = useState<string | null>(null);
+  const [refinePrompt, setRefinePrompt] = useState("");
+  const [isAiRefining, setIsAiRefining] = useState(false);
+  const [copiedFormat, setCopiedFormat] = useState<"text" | "json" | null>(null);
+  const [showAiResponseBox, setShowAiResponseBox] = useState<boolean>(true);
+
+  // Load script version history from localStorage on mount
+  useEffect(() => {
+    try {
+      const savedVersions = localStorage.getItem(VERSIONS_STORAGE_KEY);
+      if (savedVersions) {
+        const parsed = JSON.parse(savedVersions);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setScriptVersions(parsed);
+          setActiveVersionId(parsed[0].id);
+        }
+      }
+    } catch (e) {
+      console.warn("Lỗi nạp lịch sử phiên bản:", e);
+    }
+  }, []);
+
+  const saveVersions = (versions: ScriptVersion[]) => {
+    setScriptVersions(versions);
+    try {
+      localStorage.setItem(VERSIONS_STORAGE_KEY, JSON.stringify(versions));
+    } catch (e) {
+      console.warn("Lỗi lưu lịch sử phiên bản:", e);
+    }
+  };
 
   // CIT Voice Studio dynamic voices
   const [voiceList, setVoiceList] = useState<VoiceOption[]>(VOICE_OPTIONS);
@@ -604,15 +770,41 @@ function CreateStudioInner() {
 
       // 4. Map mảng 12 câu kịch bản & tự động quét bọc thẻ keyword màu vàng
       const keywords = Array.isArray(data.keywordsToHighlight) ? data.keywordsToHighlight : [];
+      let formattedLines: ScriptLine[] = BLANK_SCRIPT;
       if (Array.isArray(data.script) && data.script.length > 0) {
-        const formattedLines: ScriptLine[] = data.script.map((lineText: string) => {
+        formattedLines = data.script.map((lineText: string) => {
           return autoHighlightKeywords(lineText, keywords);
         });
         setScriptLines(formattedLines);
       }
 
+      // 5. Lưu phiên bản mới vào lịch sử
+      const nextVerNum = (scriptVersions[0]?.versionNumber || scriptVersions.length) + 1;
+      const newVersion: ScriptVersion = {
+        id: "ver-" + Date.now(),
+        versionNumber: nextVerNum,
+        timestamp: Date.now(),
+        label: `Bản ${nextVerNum} (Gốc)`,
+        promptUsed: aiIdea.trim(),
+        isRefined: false,
+        data: {
+          title: data.title || aiIdea.slice(0, 40),
+          category: data.category || "Kiến thức bóng đá",
+          conceptA: data.conceptA || "",
+          conceptB: data.conceptB || "",
+          iconA: data.iconA || "jersey-player",
+          iconB: data.iconB || "jersey-fan",
+          scriptLines: formattedLines,
+          keywordsToHighlight: keywords,
+        },
+      };
+
+      const updatedVersions = [newVersion, ...scriptVersions];
+      saveVersions(updatedVersions);
+      setActiveVersionId(newVersion.id);
+
       setAiSuccessMessage(
-        `✨ AI đã hoàn thành kịch bản 12 câu cho chủ đề "${data.title || data.conceptA + " vs " + data.conceptB}"!`
+        `✨ AI đã hoàn thành kịch bản 12 câu cho chủ đề "${data.title || data.conceptA + " vs " + data.conceptB}" (Bản ${nextVerNum})!`
       );
       setLastAutoSavedTime("Đã nạp kịch bản AI: " + new Date().toLocaleTimeString("vi-VN"));
     } catch (err: unknown) {
@@ -621,6 +813,203 @@ function CreateStudioInner() {
     } finally {
       setIsAiGenerating(false);
     }
+  };
+
+  // AI Script Refinement: Tinh chỉnh dựa trên kịch bản hiện tại và yêu cầu mới
+  const handleAiRefineScript = async (customPrompt?: string) => {
+    const promptToUse = (customPrompt || refinePrompt).trim();
+    if (!promptToUse) {
+      setAiError("Vui lòng nhập yêu cầu tinh chỉnh hoặc bấm vào 1 gợi ý nhanh!");
+      return;
+    }
+
+    const currentPlainTextLines = scriptLines.map((l) => l.tts.trim() || l.caption.replace(/<[^>]+>/g, "").trim());
+    const hasExistingScript = currentPlainTextLines.some((l) => Boolean(l));
+
+    if (!hasExistingScript) {
+      setAiError("Chưa có kịch bản nào để tinh chỉnh. Vui lòng bấm 'Tạo kịch bản' trước!");
+      return;
+    }
+
+    setIsAiRefining(true);
+    setAiError(null);
+    setAiSuccessMessage(null);
+
+    try {
+      const res = await fetch("/api/generate-script", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          idea: aiIdea.trim() || title,
+          refinePrompt: promptToUse,
+          currentScript: {
+            title,
+            category,
+            conceptA,
+            conceptB,
+            iconA,
+            iconB,
+            script: currentPlainTextLines,
+          },
+        }),
+      });
+
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json.error || "Không thể tinh chỉnh kịch bản");
+      }
+
+      const { data } = json;
+      if (!data) throw new Error("Không nhận được dữ liệu kịch bản tinh chỉnh");
+
+      if (data.conceptA) setConceptA(data.conceptA);
+      if (data.conceptB) setConceptB(data.conceptB);
+      if (data.iconA) setIconA(data.iconA);
+      if (data.iconB) setIconB(data.iconB);
+      if (data.title) {
+        setTitle(data.title);
+        setSlug(toSlug(data.title));
+      }
+      if (data.category) setCategory(data.category);
+
+      const keywords = Array.isArray(data.keywordsToHighlight) ? data.keywordsToHighlight : [];
+      let formattedLines: ScriptLine[] = BLANK_SCRIPT;
+      if (Array.isArray(data.script) && data.script.length > 0) {
+        formattedLines = data.script.map((lineText: string) => {
+          return autoHighlightKeywords(lineText, keywords);
+        });
+        setScriptLines(formattedLines);
+      }
+
+      const nextVerNum = (scriptVersions[0]?.versionNumber || scriptVersions.length) + 1;
+      const snippet = promptToUse.length > 22 ? promptToUse.slice(0, 20) + "..." : promptToUse;
+      const newVersion: ScriptVersion = {
+        id: "ver-" + Date.now(),
+        versionNumber: nextVerNum,
+        timestamp: Date.now(),
+        label: `Bản ${nextVerNum} (${snippet})`,
+        promptUsed: promptToUse,
+        isRefined: true,
+        data: {
+          title: data.title || title,
+          category: data.category || category,
+          conceptA: data.conceptA || conceptA,
+          conceptB: data.conceptB || conceptB,
+          iconA: data.iconA || iconA,
+          iconB: data.iconB || iconB,
+          scriptLines: formattedLines,
+          keywordsToHighlight: keywords,
+        },
+      };
+
+      const updatedVersions = [newVersion, ...scriptVersions];
+      saveVersions(updatedVersions);
+      setActiveVersionId(newVersion.id);
+      setRefinePrompt("");
+
+      setAiSuccessMessage(
+        `✨ Đã tinh chỉnh thành công Bản ${nextVerNum} theo yêu cầu: "${snippet}"!`
+      );
+      setLastAutoSavedTime("Đã tinh chỉnh Bản " + nextVerNum + ": " + new Date().toLocaleTimeString("vi-VN"));
+    } catch (err: unknown) {
+      const error = err as Error;
+      setAiError(error.message || "Lỗi tinh chỉnh kịch bản");
+    } finally {
+      setIsAiRefining(false);
+    }
+  };
+
+  // Áp dụng phiên bản được chọn từ lịch sử
+  const handleApplyVersion = (ver: ScriptVersion) => {
+    setActiveVersionId(ver.id);
+    if (ver.data.title) {
+      setTitle(ver.data.title);
+      setSlug(toSlug(ver.data.title));
+    }
+    if (ver.data.category) setCategory(ver.data.category);
+    if (ver.data.conceptA) setConceptA(ver.data.conceptA);
+    if (ver.data.conceptB) setConceptB(ver.data.conceptB);
+    if (ver.data.iconA) setIconA(ver.data.iconA);
+    if (ver.data.iconB) setIconB(ver.data.iconB);
+    if (Array.isArray(ver.data.scriptLines)) {
+      setScriptLines(ver.data.scriptLines);
+    }
+    setAiSuccessMessage(`Đã chuyển sang ${ver.label}`);
+  };
+
+  // Chụp snapshot phiên bản hiện tại từ form thủ công
+  const handleManualSaveVersion = () => {
+    const nextVerNum = (scriptVersions[0]?.versionNumber || scriptVersions.length) + 1;
+    const manualVer: ScriptVersion = {
+      id: "ver-" + Date.now(),
+      versionNumber: nextVerNum,
+      timestamp: Date.now(),
+      label: `Bản ${nextVerNum} (Lưu tay)`,
+      promptUsed: "Chỉnh sửa thủ công trực tiếp trên form",
+      isRefined: false,
+      data: {
+        title,
+        category,
+        conceptA,
+        conceptB,
+        iconA,
+        iconB,
+        scriptLines: [...scriptLines],
+      },
+    };
+    const updated = [manualVer, ...scriptVersions];
+    saveVersions(updated);
+    setActiveVersionId(manualVer.id);
+    setAiSuccessMessage(`Đã chụp snapshot lưu thành Bản ${nextVerNum}!`);
+  };
+
+  // Xóa 1 phiên bản
+  const handleDeleteVersion = (e: React.MouseEvent, verId: string) => {
+    e.stopPropagation();
+    const updated = scriptVersions.filter((v) => v.id !== verId);
+    saveVersions(updated);
+    if (activeVersionId === verId) {
+      setActiveVersionId(updated[0]?.id || null);
+    }
+  };
+
+  // Xóa toàn bộ lịch sử phiên bản
+  const handleClearAllVersions = () => {
+    if (window.confirm("Bạn có chắc chắn muốn xóa toàn bộ lịch sử các phiên bản kịch bản?")) {
+      saveVersions([]);
+      setActiveVersionId(null);
+    }
+  };
+
+  // Sao chép toàn bộ kịch bản AI phiên hiện tại để mang sang ChatGPT / Gemini
+  const handleCopyScript = (format: "text" | "json") => {
+    const activeVer = scriptVersions.find((v) => v.id === activeVersionId);
+    const dataToExport = activeVer
+      ? activeVer.data
+      : {
+          title,
+          category,
+          conceptA,
+          conceptB,
+          iconA,
+          iconB,
+          scriptLines,
+        };
+
+    const textToCopy =
+      format === "text"
+        ? formatScriptForExternalAi(dataToExport)
+        : formatScriptAsJson(dataToExport);
+
+    navigator.clipboard
+      .writeText(textToCopy)
+      .then(() => {
+        setCopiedFormat(format);
+        setTimeout(() => setCopiedFormat(null), 2500);
+      })
+      .catch(() => {
+        alert("Không thể tự động copy, vui lòng chọn và bôi đen nội dung để copy thủ công.");
+      });
   };
 
   // 2. WYSIWYG: Apply visual keyword tag to selection
@@ -968,7 +1357,7 @@ function CreateStudioInner() {
                   type="text"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  placeholder="Áo bản Player vs Áo bản Fan"
+                  placeholder="Ví dụ: Messi vs Ronaldo hoặc Áo Player vs Fan..."
                   className="w-full bg-[#081C15] border border-[#EBF8F2]/20 rounded-xl px-4 py-2.5 text-sm font-semibold text-[#EBF8F2] focus:border-[#FFD200] outline-none transition"
                 />
               </div>
@@ -995,6 +1384,9 @@ function CreateStudioInner() {
                   onChange={(e) => setCategory(e.target.value)}
                   className="w-full bg-[#081C15] border border-[#EBF8F2]/20 rounded-xl px-4 py-2.5 text-sm text-[#EBF8F2] focus:border-[#FFD200] outline-none"
                 >
+                  {category && !CATEGORIES.includes(category) && (
+                    <option value={category}>✨ {category} (AI đề xuất)</option>
+                  )}
                   {CATEGORIES.map((cat) => (
                     <option key={cat} value={cat}>
                       {cat}
@@ -1011,7 +1403,7 @@ function CreateStudioInner() {
                   type="text"
                   value={slug}
                   onChange={(e) => setSlug(e.target.value)}
-                  placeholder="ao-player-vs-ao-fan"
+                  placeholder="Ví dụ: messi-vs-ronaldo..."
                   className="w-full bg-[#081C15] border border-[#EBF8F2]/20 rounded-xl px-4 py-2.5 text-sm text-[#EBF8F2] focus:border-[#FFD200] outline-none font-mono"
                 />
               </div>
@@ -1065,29 +1457,315 @@ function CreateStudioInner() {
             </div>
           </div>
 
-          {/* ── AI Auto-Fill Assistant Card ── */}
-          <div className="relative overflow-hidden bg-gradient-to-br from-[#103E2E]/90 via-[#0B2A1F]/90 to-[#081C15]/95 backdrop-blur-md border-2 border-[#10B981]/50 rounded-2xl p-5 shadow-2xl transition-all">
-            <div className="flex items-center justify-between pb-3 border-b border-[#EBF8F2]/10 mb-4">
+          {/* ── AI Auto-Fill & Refinement Assistant Card ── */}
+          <div className="relative overflow-hidden bg-gradient-to-br from-[#103E2E]/90 via-[#0B2A1F]/90 to-[#081C15]/95 backdrop-blur-md border-2 border-[#10B981]/50 rounded-2xl p-5 shadow-2xl transition-all space-y-4">
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-[#EBF8F2]/10 gap-3">
               <div className="flex items-center space-x-2.5">
-                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#10B981] to-[#FFD200] flex items-center justify-center text-[#081C15] shadow-md shadow-[#10B981]/25">
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#10B981] to-[#FFD200] flex items-center justify-center text-[#081C15] shadow-md shadow-[#10B981]/25 shrink-0">
                   <Sparkles className="w-4 h-4 fill-current" />
                 </div>
                 <div>
                   <h2 className="text-sm font-black uppercase tracking-wider text-[#FFD200] flex items-center gap-2">
-                    <span>Trợ lý AI — Tự động viết kịch bản 12 câu</span>
+                    <span>Trợ lý AI — Viết & Tinh chỉnh kịch bản 12 câu</span>
                     <span className="text-[10px] font-bold uppercase bg-[#FFD200]/20 text-[#FFD200] px-2 py-0.5 rounded-full border border-[#FFD200]/30">
-                      Auto-Fill ⚡
+                      Auto-Fill & Refine ⚡
                     </span>
                   </h2>
                   <p className="text-[11px] text-[#EBF8F2]/70 font-medium">
-                    Nhập ý tưởng hoặc đề tài so sánh, AI sẽ biên kịch 12 câu, tự điền vế A/B và tự động bôi màu từ khóa.
+                    Tạo kịch bản mới, tinh chỉnh kịch bản cũ theo ý muốn, và quản lý lịch sử các phiên bản mà không lo mất nội dung.
                   </p>
                 </div>
               </div>
+
+              {/* Header Right Actions */}
+              <div className="flex items-center space-x-2 shrink-0">
+                {scriptVersions.length > 0 && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={handleManualSaveVersion}
+                      title="Lưu kịch bản đang hiển thị thành một phiên bản snapshot mới"
+                      className="px-2.5 py-1.5 rounded-lg bg-[#143D2E] hover:bg-[#1A4D3B] text-[#FFD200] border border-[#FFD200]/30 text-[11px] font-bold flex items-center gap-1.5 transition cursor-pointer"
+                    >
+                      <BookmarkPlus className="w-3.5 h-3.5" />
+                      <span>📸 Lưu bản này</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleClearAllVersions}
+                      title="Xóa toàn bộ lịch sử các phiên bản"
+                      className="px-2 py-1.5 rounded-lg bg-red-950/40 hover:bg-red-900/60 text-red-300 border border-red-500/30 text-[11px] font-medium flex items-center gap-1 transition cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">Xóa lịch sử</span>
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
 
-            {/* Input Idea Textarea */}
-            <div className="space-y-3">
+            {/* Error & Success Feedback */}
+            {aiError && (
+              <div className="p-3 rounded-xl bg-red-950/70 border border-red-500/40 text-red-200 text-xs flex items-center space-x-2">
+                <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
+                <span>{aiError}</span>
+              </div>
+            )}
+
+            {aiSuccessMessage && (
+              <div className="p-3 rounded-xl bg-emerald-950/70 border border-emerald-500/40 text-emerald-200 text-xs flex items-center space-x-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                <span>{aiSuccessMessage}</span>
+              </div>
+            )}
+
+            {/* ── Version History Switcher Bar (Khi đã có ít nhất 1 phiên bản) ── */}
+            {scriptVersions.length > 0 && (
+              <div className="p-3 rounded-xl bg-[#081C15]/85 border border-[#10B981]/30 space-y-2">
+                <div className="flex items-center justify-between text-[11px] font-bold text-[#FFD200] px-1">
+                  <span className="flex items-center gap-1.5">
+                    <History className="w-3.5 h-3.5 text-[#10B981]" />
+                    <span>LỊCH SỬ CÁC PHIÊN BẢN ({scriptVersions.length}):</span>
+                    <span className="text-[10px] text-[#EBF8F2]/60 font-normal">
+                      (Bấm vào bản bất kỳ để khôi phục hoặc tinh chỉnh tiếp)
+                    </span>
+                  </span>
+                  <span className="text-[10px] text-[#10B981] font-mono">
+                    Đang chọn: {scriptVersions.find((v) => v.id === activeVersionId)?.label || "Bản hiện tại"}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2 overflow-x-auto pb-1.5 pt-0.5 scrollbar-thin">
+                  {scriptVersions.map((ver) => {
+                    const isActive = ver.id === activeVersionId;
+                    return (
+                      <div
+                        key={ver.id}
+                        onClick={() => handleApplyVersion(ver)}
+                        title={`Yêu cầu: "${ver.promptUsed}"\nTạo lúc: ${new Date(ver.timestamp).toLocaleTimeString("vi-VN")}`}
+                        className={`group relative flex items-center space-x-2 px-3 py-1.5 rounded-lg border text-xs font-bold transition cursor-pointer shrink-0 select-none ${
+                          isActive
+                            ? "bg-gradient-to-r from-[#10B981] to-[#FFD200] text-[#081C15] border-[#FFD200] shadow-md shadow-[#10B981]/25 ring-2 ring-[#FFD200]/30"
+                            : "bg-[#0E291E]/90 hover:bg-[#143D2E] text-[#EBF8F2]/90 border-[#EBF8F2]/15 hover:border-[#10B981]/50"
+                        }`}
+                      >
+                        {isActive ? (
+                          <Check className="w-3.5 h-3.5 text-[#081C15] stroke-[3]" />
+                        ) : (
+                          <Layers className="w-3.5 h-3.5 text-[#10B981]" />
+                        )}
+                        <span className="truncate max-w-[170px]">{ver.label}</span>
+                        <span className={`text-[9px] font-mono px-1 rounded ${isActive ? "bg-[#081C15]/20 text-[#081C15]" : "text-[#EBF8F2]/50"}`}>
+                          {new Date(ver.timestamp).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
+                        </span>
+
+                        {/* Nút xóa phiên bản */}
+                        {scriptVersions.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={(e) => handleDeleteVersion(e, ver.id)}
+                            title="Xóa phiên bản này"
+                            className={`p-0.5 rounded opacity-40 hover:opacity-100 transition ${
+                              isActive ? "hover:bg-red-500/20 text-[#081C15]" : "hover:bg-red-500/30 text-red-400"
+                            }`}
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* ── Bảng hiển thị toàn bộ kịch bản AI phiên trước (Dễ dàng Copy sang ChatGPT / Gemini) ── */}
+            {(scriptVersions.length > 0 || scriptLines.some((l) => l.tts.trim() || l.caption.trim())) && (
+              <div className="p-3.5 rounded-xl bg-[#061811]/90 border border-[#10B981]/30 space-y-2.5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="flex items-center space-x-2">
+                    <FileText className="w-4 h-4 text-[#FFD200]" />
+                    <span className="text-xs font-black uppercase tracking-wider text-[#FFD200]">
+                      Toàn bộ kịch bản AI ({scriptVersions.find((v) => v.id === activeVersionId)?.label || "Bản hiện tại"})
+                    </span>
+                    <span className="text-[10px] text-[#10B981] bg-[#10B981]/15 px-2 py-0.5 rounded font-bold border border-[#10B981]/30">
+                      Sẵn sàng Copy 📋
+                    </span>
+                  </div>
+
+                  {/* Copy Action Buttons */}
+                  <div className="flex items-center space-x-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => handleCopyScript("text")}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 transition cursor-pointer ${
+                        copiedFormat === "text"
+                          ? "bg-emerald-500 text-[#081C15] shadow-md shadow-emerald-500/30"
+                          : "bg-[#143D2E] hover:bg-[#1A4D3B] text-[#FFD200] border border-[#FFD200]/30"
+                      }`}
+                    >
+                      {copiedFormat === "text" ? (
+                        <>
+                          <Check className="w-3.5 h-3.5 stroke-[3]" />
+                          <span>Đã Copy Văn Bản!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3.5 h-3.5" />
+                          <span>📋 Copy toàn bộ kịch bản</span>
+                        </>
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleCopyScript("json")}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 transition cursor-pointer ${
+                        copiedFormat === "json"
+                          ? "bg-emerald-500 text-[#081C15]"
+                          : "bg-[#081C15] hover:bg-[#103E2E] text-[#EBF8F2]/80 border border-[#EBF8F2]/15"
+                      }`}
+                      title="Copy dưới dạng mã JSON cấu trúc chuẩn"
+                    >
+                      {copiedFormat === "json" ? (
+                        <>
+                          <Check className="w-3 h-3 stroke-[3]" />
+                          <span>Đã Copy JSON!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Code className="w-3 h-3" />
+                          <span>Copy JSON</span>
+                        </>
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setShowAiResponseBox((prev) => !prev)}
+                      className="p-1 rounded text-[#EBF8F2]/60 hover:text-[#FFD200] transition"
+                      title={showAiResponseBox ? "Thu gọn bảng kịch bản" : "Mở rộng bảng kịch bản"}
+                    >
+                      {showAiResponseBox ? (
+                        <ChevronUp className="w-4 h-4" />
+                      ) : (
+                        <ChevronDown className="w-4 h-4" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Preformatted Script Preview Box */}
+                {showAiResponseBox && (
+                  <div className="space-y-2">
+                    <div className="p-3 bg-[#030D09]/95 border border-[#10B981]/20 rounded-xl max-h-52 overflow-y-auto font-mono text-[11px] text-[#EBF8F2]/90 space-y-1.5 scrollbar-thin">
+                      <div className="text-[#FFD200] font-bold border-b border-[#EBF8F2]/10 pb-1 flex justify-between items-center">
+                        <span>
+                          [{category}] {title || "Chưa có tiêu đề"}
+                        </span>
+                        <span className="text-[10px] text-[#10B981] font-mono">
+                          {conceptA || "VẾ A"} ({getDisplayEmoji(iconA)}) vs {conceptB || "VẾ B"} ({getDisplayEmoji(iconB)})
+                        </span>
+                      </div>
+                      <div className="space-y-1 pt-1">
+                        {scriptLines.map((line, idx) => {
+                          const plain = line.tts || line.caption.replace(/<[^>]+>/g, "").trim();
+                          if (!plain) return null;
+                          return (
+                            <div key={idx} className="flex gap-2 leading-relaxed">
+                              <span className="text-[#10B981] font-bold shrink-0 select-none w-14">
+                                Câu {idx + 1}:
+                              </span>
+                              <span className="text-[#EBF8F2]/90">{plain}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between text-[10px] text-[#EBF8F2]/60 px-1">
+                      <span>
+                        💡 <strong className="text-[#10B981]">Mẹo:</strong> Bấm nút <strong>&quot;Copy toàn bộ kịch bản&quot;</strong>, dán sang ChatGPT hoặc Gemini trên web để thoải mái thảo luận hoặc tinh chỉnh, rồi copy kết quả dán vào ô bên dưới!
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── Refinement Area: Tinh chỉnh dựa trên kịch bản đang chọn ── */}
+            {(scriptVersions.length > 0 || scriptLines.some((l) => l.tts.trim() || l.caption.trim())) && (
+              <div className="p-4 rounded-xl bg-gradient-to-br from-[#0B2A1F]/90 to-[#081C15]/95 border border-[#10B981]/40 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <Wand2 className="w-4 h-4 text-[#FFD200]" />
+                    <span className="text-xs font-black uppercase tracking-wider text-[#FFD200]">
+                      🪄 AI Tinh chỉnh kịch bản theo yêu cầu
+                    </span>
+                    <span className="text-[10px] text-[#10B981] bg-[#10B981]/15 px-2 py-0.5 rounded font-bold border border-[#10B981]/30">
+                      Dựa trên {scriptVersions.find((v) => v.id === activeVersionId)?.label || "Kịch bản hiện tại"}
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-[#EBF8F2]/60 hidden sm:inline">
+                    Phím tắt: Ctrl + Enter để tinh chỉnh nhanh
+                  </span>
+                </div>
+
+                <div className="relative">
+                  <textarea
+                    rows={3}
+                    value={refinePrompt}
+                    onChange={(e) => setRefinePrompt(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+                        e.preventDefault();
+                        handleAiRefineScript();
+                      }
+                    }}
+                    placeholder="Nhập yêu cầu bạn muốn AI sửa đổi hoặc dán nội dung/kịch bản đã tinh chỉnh từ ChatGPT / Gemini vào đây (Ví dụ: Thay câu kết kích thích tranh luận hơn, bổ sung số bàn thắng C1 cho Ronaldo, hoặc viết theo phong cách kịch tính gay gắt hơn...)"
+                    className="w-full bg-[#081C15]/90 border border-[#10B981]/30 rounded-xl px-4 py-2.5 text-sm text-[#EBF8F2] placeholder-[#EBF8F2]/40 focus:border-[#FFD200] focus:ring-1 focus:ring-[#FFD200] outline-none transition resize-none font-medium"
+                  />
+                </div>
+
+                {/* Nút gửi tinh chỉnh */}
+                <div className="flex justify-end pt-1">
+                  <button
+                    type="button"
+                    disabled={isAiRefining || isAiGenerating || !refinePrompt.trim()}
+                    onClick={() => handleAiRefineScript()}
+                    className="px-5 py-2 rounded-xl bg-gradient-to-r from-[#10B981] to-[#FFD200] hover:brightness-110 text-[#081C15] font-black text-xs uppercase tracking-wider shadow-lg shadow-[#10B981]/20 flex items-center space-x-2 disabled:opacity-40 disabled:cursor-not-allowed transition transform active:scale-95 cursor-pointer"
+                  >
+                    {isAiRefining ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin text-[#081C15]" />
+                        <span>Đang tinh chỉnh & tạo bản mới...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Wand2 className="w-4 h-4 text-[#081C15]" />
+                        <span>✨ Tinh chỉnh & Lưu thành Bản mới</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* ── Initial Script Generation Area ── */}
+            <div className="p-4 rounded-xl bg-[#081C15]/70 border border-[#EBF8F2]/15 space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold uppercase tracking-wider text-[#FFD200] flex items-center gap-1.5">
+                  <Sparkle className="w-3.5 h-3.5 text-[#FFD200]" />
+                  <span>
+                    {scriptVersions.length > 0 ? "Hoặc nhập ý tưởng đề tài mới hoàn toàn:" : "1. Nhập ý tưởng đề tài so sánh:"}
+                  </span>
+                </label>
+                <span className="text-[10px] text-[#EBF8F2]/50">
+                  Phím tắt: Ctrl + Enter
+                </span>
+              </div>
+
               <div>
                 <textarea
                   rows={2}
@@ -1100,32 +1778,16 @@ function CreateStudioInner() {
                     }
                   }}
                   placeholder="Ví dụ: So sánh mức lương và thu nhập giữa Messi và Ronaldo... Hoặc: Haaland vs Mbappe ai toàn diện hơn?"
-                  className="w-full bg-[#081C15]/90 border border-[#EBF8F2]/25 rounded-xl px-4 py-3 text-sm text-[#EBF8F2] placeholder-[#EBF8F2]/40 focus:border-[#FFD200] focus:ring-1 focus:ring-[#FFD200] outline-none transition resize-none font-medium"
+                  className="w-full bg-[#0E291E]/80 border border-[#EBF8F2]/20 rounded-xl px-4 py-2.5 text-sm text-[#EBF8F2] placeholder-[#EBF8F2]/40 focus:border-[#FFD200] focus:ring-1 focus:ring-[#FFD200] outline-none transition resize-none font-medium"
                 />
               </div>
 
-              {/* Error & Success Feedback */}
-              {aiError && (
-                <div className="p-3 rounded-xl bg-red-950/70 border border-red-500/40 text-red-200 text-xs flex items-center space-x-2">
-                  <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
-                  <span>{aiError}</span>
-                </div>
-              )}
-
-              {aiSuccessMessage && (
-                <div className="p-3 rounded-xl bg-emerald-950/70 border border-emerald-500/40 text-emerald-200 text-xs flex items-center space-x-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                  <span>{aiSuccessMessage}</span>
-                </div>
-              )}
-
-              {/* Action Button */}
               <div className="flex justify-end pt-1">
                 <button
                   type="button"
-                  disabled={isAiGenerating}
+                  disabled={isAiGenerating || isAiRefining || !aiIdea.trim()}
                   onClick={handleAiGenerateScript}
-                  className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#10B981] to-[#FFD200] hover:brightness-110 text-[#081C15] font-black text-xs uppercase tracking-wider shadow-lg shadow-[#10B981]/20 flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed transition transform active:scale-95 cursor-pointer"
+                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#10B981] to-[#FFD200] hover:brightness-110 text-[#081C15] font-black text-xs uppercase tracking-wider shadow-lg shadow-[#10B981]/20 flex items-center space-x-2 disabled:opacity-40 disabled:cursor-not-allowed transition transform active:scale-95 cursor-pointer"
                 >
                   {isAiGenerating ? (
                     <>
@@ -1135,7 +1797,9 @@ function CreateStudioInner() {
                   ) : (
                     <>
                       <Wand2 className="w-4 h-4 text-[#081C15]" />
-                      <span>✨ AI Tự Động Viết Kịch Bản</span>
+                      <span>
+                        {scriptVersions.length > 0 ? "✨ AI Viết Kịch Bản Cho Đề Tài Mới" : "✨ AI Tự Động Viết Kịch Bản"}
+                      </span>
                     </>
                   )}
                 </button>
@@ -1173,7 +1837,7 @@ function CreateStudioInner() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Concept A Left */}
-                <div className="p-4 rounded-xl bg-[#081C15]/80 border-2 border-[#FFD200]/40 relative overflow-hidden">
+                <div className="p-4 rounded-xl bg-[#081C15]/80 border-2 border-[#FFD200]/40 relative overflow-hidden flex flex-col justify-between">
                   <div className="absolute top-0 right-0 bg-[#FFD200] text-[#081C15] text-[10px] font-black uppercase px-2 py-0.5 rounded-bl">
                     VẾ TRÁI (A)
                   </div>
@@ -1186,32 +1850,70 @@ function CreateStudioInner() {
                         type="text"
                         value={conceptA}
                         onChange={(e) => setConceptA(e.target.value)}
-                        placeholder="BẢN PLAYER"
+                        placeholder="Ví dụ: LIONEL MESSI..."
                         className="w-full bg-[#143D2E] border border-[#EBF8F2]/20 rounded-lg px-3 py-2 text-sm font-black text-[#FFD200] focus:border-[#FFD200] outline-none"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-[11px] font-semibold text-[#EBF8F2]/70 mb-1">
-                        Icon đại diện
-                      </label>
-                      <select
-                        value={iconA}
-                        onChange={(e) => setIconA(e.target.value)}
-                        className="w-full bg-[#143D2E] border border-[#EBF8F2]/20 rounded-lg px-3 py-2 text-xs text-[#EBF8F2] focus:border-[#FFD200] outline-none"
-                      >
-                        {ICON_OPTIONS.map((ico) => (
-                          <option key={ico.id} value={ico.id}>
-                            {ico.emoji} {ico.name}
-                          </option>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-[11px] font-semibold text-[#EBF8F2]/70">
+                          Icon / Emoji đại diện
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const suggested = suggestIconForConcept(conceptA);
+                            setIconA(suggested);
+                          }}
+                          className="text-[10px] text-[#FFD200] hover:underline flex items-center gap-1 font-bold cursor-pointer"
+                          title="Tự động gợi ý Icon theo tên Concept A"
+                        >
+                          <Sparkles className="w-3 h-3 text-[#FFD200]" />
+                          <span>⚡ AI gợi ý icon</span>
+                        </button>
+                      </div>
+
+                      <div className="flex items-center space-x-2">
+                        <div
+                          className="w-10 h-10 rounded-lg bg-[#143D2E] border border-[#FFD200]/40 flex items-center justify-center text-xl shrink-0 shadow-inner select-none"
+                          title={`Xem trước Icon A: ${iconA}`}
+                        >
+                          {getDisplayEmoji(iconA)}
+                        </div>
+                        <input
+                          type="text"
+                          value={iconA}
+                          onChange={(e) => setIconA(e.target.value)}
+                          placeholder="Emoji (🐐, ⚡, ⚽) hoặc URL..."
+                          className="flex-1 bg-[#143D2E] border border-[#EBF8F2]/20 rounded-lg px-3 py-2 text-xs font-semibold text-[#EBF8F2] focus:border-[#FFD200] outline-none"
+                        />
+                      </div>
+
+                      {/* Quick Emoji Pills */}
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {POPULAR_ICONS.slice(0, 7).map((ico) => (
+                          <button
+                            key={ico.value}
+                            type="button"
+                            onClick={() => setIconA(ico.value)}
+                            className={`px-1.5 py-0.5 rounded text-[11px] transition cursor-pointer ${
+                              iconA === ico.value
+                                ? "bg-[#FFD200] text-[#081C15] font-bold"
+                                : "bg-[#143D2E]/60 text-[#EBF8F2]/70 hover:bg-[#143D2E] hover:text-[#FFD200]"
+                            }`}
+                            title={ico.label}
+                          >
+                            {getDisplayEmoji(ico.value)}
+                          </button>
                         ))}
-                      </select>
+                      </div>
                     </div>
                   </div>
                 </div>
 
                 {/* Concept B Right */}
-                <div className="p-4 rounded-xl bg-[#081C15]/80 border-2 border-[#EBF8F2]/40 relative overflow-hidden">
+                <div className="p-4 rounded-xl bg-[#081C15]/80 border-2 border-[#EBF8F2]/40 relative overflow-hidden flex flex-col justify-between">
                   <div className="absolute top-0 right-0 bg-[#EBF8F2] text-[#081C15] text-[10px] font-black uppercase px-2 py-0.5 rounded-bl">
                     VẾ PHẢI (B)
                   </div>
@@ -1224,26 +1926,64 @@ function CreateStudioInner() {
                         type="text"
                         value={conceptB}
                         onChange={(e) => setConceptB(e.target.value)}
-                        placeholder="BẢN FAN"
+                        placeholder="Ví dụ: CRISTIANO RONALDO..."
                         className="w-full bg-[#143D2E] border border-[#EBF8F2]/20 rounded-lg px-3 py-2 text-sm font-black text-[#EBF8F2] focus:border-[#EBF8F2] outline-none"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-[11px] font-semibold text-[#EBF8F2]/70 mb-1">
-                        Icon đại diện
-                      </label>
-                      <select
-                        value={iconB}
-                        onChange={(e) => setIconB(e.target.value)}
-                        className="w-full bg-[#143D2E] border border-[#EBF8F2]/20 rounded-lg px-3 py-2 text-xs text-[#EBF8F2] focus:border-[#EBF8F2] outline-none"
-                      >
-                        {ICON_OPTIONS.map((ico) => (
-                          <option key={ico.id} value={ico.id}>
-                            {ico.emoji} {ico.name}
-                          </option>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-[11px] font-semibold text-[#EBF8F2]/70">
+                          Icon / Emoji đại diện
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const suggested = suggestIconForConcept(conceptB);
+                            setIconB(suggested);
+                          }}
+                          className="text-[10px] text-[#FFD200] hover:underline flex items-center gap-1 font-bold cursor-pointer"
+                          title="Tự động gợi ý Icon theo tên Concept B"
+                        >
+                          <Sparkles className="w-3 h-3 text-[#FFD200]" />
+                          <span>⚡ AI gợi ý icon</span>
+                        </button>
+                      </div>
+
+                      <div className="flex items-center space-x-2">
+                        <div
+                          className="w-10 h-10 rounded-lg bg-[#143D2E] border border-[#EBF8F2]/40 flex items-center justify-center text-xl shrink-0 shadow-inner select-none"
+                          title={`Xem trước Icon B: ${iconB}`}
+                        >
+                          {getDisplayEmoji(iconB)}
+                        </div>
+                        <input
+                          type="text"
+                          value={iconB}
+                          onChange={(e) => setIconB(e.target.value)}
+                          placeholder="Emoji (⚡, 🤖, 🏆) hoặc URL..."
+                          className="flex-1 bg-[#143D2E] border border-[#EBF8F2]/20 rounded-lg px-3 py-2 text-xs font-semibold text-[#EBF8F2] focus:border-[#EBF8F2] outline-none"
+                        />
+                      </div>
+
+                      {/* Quick Emoji Pills */}
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {POPULAR_ICONS.slice(0, 7).map((ico) => (
+                          <button
+                            key={ico.value}
+                            type="button"
+                            onClick={() => setIconB(ico.value)}
+                            className={`px-1.5 py-0.5 rounded text-[11px] transition cursor-pointer ${
+                              iconB === ico.value
+                                ? "bg-[#FFD200] text-[#081C15] font-bold"
+                                : "bg-[#143D2E]/60 text-[#EBF8F2]/70 hover:bg-[#143D2E] hover:text-[#FFD200]"
+                            }`}
+                            title={ico.label}
+                          >
+                            {getDisplayEmoji(ico.value)}
+                          </button>
                         ))}
-                      </select>
+                      </div>
                     </div>
                   </div>
                 </div>
