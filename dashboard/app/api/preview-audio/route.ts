@@ -15,6 +15,17 @@ function getRootDir(): string {
   return current;
 }
 
+// Map Vietnamese voice name to Edge TTS fallback
+function mapToEdgeVoice(voiceName: string = ""): string {
+  if (voiceName.includes("Neural")) return voiceName;
+
+  const femaleVoices = ["Trúc Ly", "Mai Anh", "Thùy Dung", "Ngọc Huyền", "Ngọc Trân", "Ngọc Linh", "Đoan Trang", "Thục Đoan", "Mỹ Duyên", "Quỳnh Anh", "Kim Thanh"];
+  if (femaleVoices.some((f) => voiceName.includes(f))) {
+    return "vi-VN-HoaiMyNeural";
+  }
+  return "vi-VN-NamMinhNeural";
+}
+
 // GET: Serve the generated preview audio file
 export async function GET(req: NextRequest) {
   try {
@@ -64,9 +75,29 @@ export async function POST(req: NextRequest) {
       title,
     } = body;
 
-    if (!Array.isArray(script) || script.length === 0) {
+    // Chuẩn hóa input: chấp nhận string, object đơn hoặc array
+    let rawItems: any[] = [];
+    if (Array.isArray(script)) {
+      rawItems = script;
+    } else if (typeof script === "string") {
+      rawItems = [script];
+    } else if (script && typeof script === "object") {
+      rawItems = [script];
+    }
+
+    // Trích xuất các câu thoại dạng text thuần
+    const linesText = rawItems
+      .map((item: any) => {
+        if (typeof item === "string") {
+          return item.replace(/<[^>]+>/g, "").replace(/\*\*/g, "").trim();
+        }
+        return (item?.tts || item?.caption?.replace(/<[^>]+>/g, "") || "").replace(/\*\*/g, "").trim();
+      })
+      .filter(Boolean);
+
+    if (linesText.length === 0) {
       return NextResponse.json(
-        { error: "Kịch bản phải có ít nhất 1 câu thoại để nghe thử" },
+        { error: "Vui lòng nhập nội dung thoại để nghe thử" },
         { status: 400 }
       );
     }
@@ -75,61 +106,56 @@ export async function POST(req: NextRequest) {
     const PREVIEWS_DIR = path.join(ROOT_DIR, "output", "previews");
     fs.mkdirSync(PREVIEWS_DIR, { recursive: true });
 
-    // Trích xuất các câu thoại dạng text thuần
-    const linesText = script.map((item: { tts?: string; caption?: string } | string) => {
-      if (typeof item === "string") {
-        return item.replace(/<[^>]+>/g, "").trim();
-      }
-      return (item.tts || item.caption?.replace(/<[^>]+>/g, "") || "").trim();
-    }).filter(Boolean);
-
-    if (linesText.length === 0) {
-      return NextResponse.json(
-        { error: "Không tìm thấy nội dung thoại nào" },
-        { status: 400 }
-      );
-    }
-
     // Ghép các câu lại với dấu ngắt quãng hợp lý để TTS đọc liền mạch
     const fullSpeechText = linesText.join(" ... ");
 
-    const slug = customSlug || (title ? title.toLowerCase().replace(/[^a-z0-9]+/g, "-") : "audio");
+    const slug = customSlug || (title ? title.toLowerCase().replace(/[^a-z0-9]+/g, "-") : `preview-${Date.now()}`);
     const filename = `preview-${slug}.mp3`;
     const outPath = path.join(PREVIEWS_DIR, filename);
 
-    const VIENEU_API_URL = (process.env.VIENEU_API_URL || "http://127.0.0.1:8001").replace(/\/+$/, "");
-    const VIENEU_API_KEY = process.env.VIENEU_API_KEY || process.env.CIT_API_KEY || "";
+    let synthesized = false;
 
+    // 1. Thử VieNeu TTS Local trước nếu được chọn
     if (provider === "vieneu") {
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (VIENEU_API_KEY) {
-        headers["X-API-Key"] = VIENEU_API_KEY;
+      const VIENEU_API_URL = (process.env.VIENEU_API_URL || "http://127.0.0.1:8001").replace(/\/+$/, "");
+      const VIENEU_API_KEY = process.env.VIENEU_API_KEY || process.env.CIT_API_KEY || "";
+
+      try {
+        const headers: Record<string, string> = { "Content-Type": "application/json" };
+        if (VIENEU_API_KEY) {
+          headers["X-API-Key"] = VIENEU_API_KEY;
+        }
+
+        const res = await fetch(`${VIENEU_API_URL}/api/tts/generate`, {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            text: fullSpeechText,
+            voice_id: voice || "Hải Đăng",
+            speed: 1.0,
+            format: "mp3",
+            use_pronunciation_dict: true,
+          }),
+          signal: AbortSignal.timeout(6000), // timeout 6s nếu server VieNeu chưa bật
+        });
+
+        if (res.ok) {
+          const arrayBuffer = await res.arrayBuffer();
+          fs.writeFileSync(outPath, Buffer.from(arrayBuffer));
+          synthesized = true;
+        } else {
+          console.warn(`[VieNeu TTS Error ${res.status}]: Tự động chuyển dự phòng sang Edge TTS`);
+        }
+      } catch (err: unknown) {
+        console.warn("[VieNeu TTS Offline / Unreachable]: Tự động chuyển dự phòng sang Edge TTS");
       }
+    }
 
-      const res = await fetch(`${VIENEU_API_URL}/api/tts/generate`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          text: fullSpeechText,
-          voice_id: voice || "Hải Đăng",
-          speed: 1.0,
-          format: "mp3",
-          use_pronunciation_dict: true,
-        }),
-      });
-
-      if (!res.ok) {
-        throw new Error(
-          `VieNeu TTS API tại ${VIENEU_API_URL} trả về lỗi ${res.status}: ${res.statusText}. Vui lòng kiểm tra CIT Voice Studio đang bật!`
-        );
-      }
-
-      const arrayBuffer = await res.arrayBuffer();
-      fs.writeFileSync(outPath, Buffer.from(arrayBuffer));
-    } else {
-      // Edge TTS
+    // 2. Nếu VieNeu chưa sinh được (hoặc chọn Edge TTS), dùng Edge TTS dự phòng
+    if (!synthesized) {
+      const edgeVoice = mapToEdgeVoice(voice);
       const tts = new MsEdgeTTS();
-      await tts.setMetadata(voice, OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3);
+      await tts.setMetadata(edgeVoice, OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3);
       const { audioStream } = tts.toStream(fullSpeechText, { rate: "+10%" });
 
       const chunks: Buffer[] = [];
@@ -143,15 +169,16 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const audioUrl = `/api/preview-audio?file=${filename}&t=${Date.now()}`;
+    const audioUrl = `/api/preview-audio?file=${encodeURIComponent(filename)}&t=${Date.now()}`;
 
     return NextResponse.json({
       success: true,
       audioUrl,
+      url: audioUrl,
       filename,
       voice,
       lineCount: linesText.length,
-      message: `Đã sinh xong bản nghe thử giọng ${voice} trong giây lát!`,
+      message: `Đã sinh xong bản nghe thử giọng ${voice} thành công!`,
     });
   } catch (err: unknown) {
     const error = err as Error;

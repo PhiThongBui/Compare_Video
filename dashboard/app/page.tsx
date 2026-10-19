@@ -30,6 +30,7 @@ import {
   Volume2,
   VolumeX,
 } from "lucide-react";
+import CreateVideoDropdown from "@/components/CreateVideoDropdown";
 
 interface ScriptLine {
   tts: string;
@@ -244,6 +245,8 @@ export default function DashboardPage() {
   const [selectedVideo, setSelectedVideo] = useState<VideoItem | null>(null);
   const [modalVideo, setModalVideo] = useState<VideoItem | null>(null);
   const [isLoadingVideos, setIsLoadingVideos] = useState(false);
+  const [deletingFilename, setDeletingFilename] = useState<string | null>(null);
+  const [deleteConfirmVideo, setDeleteConfirmVideo] = useState<VideoItem | null>(null);
 
   // Search & Filter in Gallery
   const [searchQuery, setSearchQuery] = useState("");
@@ -367,6 +370,48 @@ export default function DashboardPage() {
       console.error("Lỗi khi tải templates:", err);
     }
   }, []);
+
+  // Xóa video MP4
+  const handleDeleteVideo = async (video: VideoItem) => {
+    setDeletingFilename(video.filename);
+    try {
+      // Dừng phát và giải phóng thẻ video trong DOM để tránh Windows file lock
+      if (selectedVideo?.filename === video.filename) {
+        setSelectedVideo(null);
+      }
+      if (modalVideo?.filename === video.filename) {
+        setModalVideo(null);
+      }
+      if (typeof document !== "undefined") {
+        document.querySelectorAll("video").forEach((v) => {
+          try {
+            if (v.src && v.src.includes(encodeURIComponent(video.filename))) {
+              v.pause();
+              v.removeAttribute("src");
+              v.load();
+            }
+          } catch {}
+        });
+      }
+
+      const res = await fetch(`/api/videos/${encodeURIComponent(video.filename)}`, {
+        method: "DELETE",
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Không thể xóa video");
+      }
+
+      await fetchVideos();
+      setDeleteConfirmVideo(null);
+    } catch (err: unknown) {
+      const error = err as Error;
+      alert(`Lỗi khi xóa video: ${error.message}`);
+    } finally {
+      setDeletingFilename(null);
+    }
+  };
 
   useEffect(() => {
     fetchVideos();
@@ -688,42 +733,28 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* View Switcher Tabs */}
+          {/* View Switcher Tabs - Clean & compact */}
           <nav className="hidden md:flex items-center bg-[#05130E] p-1 rounded-xl border border-[#EBF8F2]/15 space-x-1">
             <button
               onClick={() => setCurrentView("gallery")}
-              className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+              className={`flex items-center space-x-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
                 currentView === "gallery"
                   ? "bg-[#143D2E] text-[#FFD200] shadow border border-[#FFD200]/30"
                   : "text-[#EBF8F2]/70 hover:text-white hover:bg-white/5"
               }`}
             >
-              <Film className="w-4 h-4" />
-              <span>Thư viện Video</span>
+              <Film className="w-3.5 h-3.5" />
+              <span>Thư viện</span>
               <span className="bg-[#10B981]/30 text-[#10B981] px-1.5 py-0.2 rounded-full text-[10px]">
                 {videos.length}
               </span>
             </button>
-
-            <Link
-              href="/create"
-              className="flex items-center space-x-2 px-4 py-2 rounded-lg text-xs font-bold transition-all text-[#EBF8F2]/70 hover:text-[#FFD200] hover:bg-white/5"
-            >
-              <Sparkles className="w-4 h-4 text-[#FFD200]" />
-              <span>Xưởng Tạo Video (/create)</span>
-            </Link>
           </nav>
         </div>
 
         {/* Right Header Controls */}
         <div className="flex items-center space-x-3">
-          <Link
-            href="/create?new=1"
-            className="flex items-center space-x-2 px-4 py-2 rounded-xl bg-gradient-to-r from-[#10B981] to-[#FFD200] text-[#081C15] font-black text-xs uppercase tracking-wide hover:shadow-lg hover:shadow-[#10B981]/25 hover:scale-105 active:scale-95 transition"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Tạo Video Mới</span>
-          </Link>
+          <CreateVideoDropdown />
 
           <button
             onClick={fetchVideos}
@@ -923,6 +954,23 @@ export default function DashboardPage() {
                         >
                           <Download className="w-3.5 h-3.5" />
                         </a>
+
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeleteConfirmVideo(vid);
+                          }}
+                          disabled={deletingFilename === vid.filename}
+                          className="py-1.5 px-2 rounded-lg bg-[#0E291E] hover:bg-[#FF334B]/20 text-xs font-semibold text-[#EBF8F2]/60 hover:text-[#FF334B] border border-[#EBF8F2]/20 hover:border-[#FF334B]/40 transition disabled:opacity-40"
+                          title="Xóa video này"
+                        >
+                          {deletingFilename === vid.filename ? (
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin text-[#FF334B]" />
+                          ) : (
+                            <Trash2 className="w-3.5 h-3.5" />
+                          )}
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -1567,6 +1615,16 @@ export default function DashboardPage() {
                         <Download className="w-4 h-4" />
                         <span>Tải MP4</span>
                       </a>
+
+                      <button
+                        type="button"
+                        onClick={() => setDeleteConfirmVideo(selectedVideo)}
+                        className="flex items-center space-x-1.5 px-3 py-2 rounded-lg bg-[#FF334B]/20 text-[#FF8595] font-bold text-xs hover:bg-[#FF334B]/30 border border-[#FF334B]/40 transition"
+                        title="Xóa video này"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        <span>Xóa</span>
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -1615,15 +1673,31 @@ export default function DashboardPage() {
             </div>
 
             <div className="w-full mt-4 flex items-center justify-between gap-3">
-              <a
-                href={modalVideo.url}
-                target="_blank"
-                rel="noreferrer"
-                className="px-3 py-2 rounded-xl bg-[#143D2E] hover:bg-[#10B981]/30 text-xs font-semibold text-[#EBF8F2] border border-[#EBF8F2]/20 flex items-center space-x-1.5 transition"
-              >
-                <ExternalLink className="w-4 h-4" />
-                <span>Mở tab mới</span>
-              </a>
+              <div className="flex items-center space-x-2">
+                <a
+                  href={modalVideo.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-3 py-2 rounded-xl bg-[#143D2E] hover:bg-[#10B981]/30 text-xs font-semibold text-[#EBF8F2] border border-[#EBF8F2]/20 flex items-center space-x-1.5 transition"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  <span>Mở tab mới</span>
+                </a>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const target = modalVideo;
+                    setModalVideo(null);
+                    setDeleteConfirmVideo(target);
+                  }}
+                  className="px-3 py-2 rounded-xl bg-[#FF334B]/15 hover:bg-[#FF334B]/30 text-xs font-semibold text-[#FF8595] border border-[#FF334B]/30 flex items-center space-x-1.5 transition"
+                  title="Xóa video này"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span>Xóa video</span>
+                </button>
+              </div>
 
               <a
                 href={modalVideo.url}
@@ -1633,6 +1707,54 @@ export default function DashboardPage() {
                 <Download className="w-4 h-4" />
                 <span>Tải File MP4</span>
               </a>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ================= CONFIRM DELETE MODAL ================= */}
+      {deleteConfirmVideo && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#0E291E] border-2 border-[#FF334B]/50 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div className="flex items-center space-x-3 text-[#FF334B]">
+              <div className="w-10 h-10 rounded-xl bg-[#FF334B]/20 flex items-center justify-center shrink-0">
+                <AlertCircle className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="font-bold text-base text-white">Xác nhận xóa video?</h3>
+                <p className="text-xs text-[#EBF8F2]/60">File video MP4 sẽ bị xóa vĩnh viễn khỏi thư mục output.</p>
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-[#081C15] border border-[#EBF8F2]/10 space-y-1">
+              <p className="text-xs font-bold text-[#FFD200] truncate">{deleteConfirmVideo.title}</p>
+              <p className="text-[11px] font-mono text-[#EBF8F2]/50 truncate">
+                {deleteConfirmVideo.filename} • {deleteConfirmVideo.sizeFormatted}
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end space-x-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setDeleteConfirmVideo(null)}
+                disabled={deletingFilename === deleteConfirmVideo.filename}
+                className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-xs font-bold text-[#EBF8F2] transition"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDeleteVideo(deleteConfirmVideo)}
+                disabled={deletingFilename === deleteConfirmVideo.filename}
+                className="px-4 py-2 rounded-xl bg-[#FF334B] hover:bg-[#e0243b] text-xs font-bold text-white flex items-center space-x-1.5 transition shadow-lg shadow-[#FF334B]/25 disabled:opacity-50"
+              >
+                {deletingFilename === deleteConfirmVideo.filename ? (
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Trash2 className="w-4 h-4" />
+                )}
+                <span>{deletingFilename === deleteConfirmVideo.filename ? "Đang xóa..." : "Xác nhận xóa"}</span>
+              </button>
             </div>
           </div>
         </div>

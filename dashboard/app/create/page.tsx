@@ -20,7 +20,6 @@ import {
   ArrowLeft,
   Check,
   Code,
-  RotateCcw,
   Volume2,
   Pause,
   X,
@@ -33,6 +32,7 @@ import {
   Copy,
   ChevronUp,
 } from "lucide-react";
+import CreateVideoDropdown from "@/components/CreateVideoDropdown";
 
 interface ScriptLine {
   tts: string;
@@ -429,6 +429,8 @@ function CreateStudioInner() {
   // Video preview states
   const [selectedVideo, setSelectedVideo] = useState<VideoItem | null>(null);
   const [modalVideo, setModalVideo] = useState<VideoItem | null>(null);
+  const [deletingFilename, setDeletingFilename] = useState<string | null>(null);
+  const [deleteConfirmVideo, setDeleteConfirmVideo] = useState<VideoItem | null>(null);
 
   // AI Script Assistant states
   const [aiIdea, setAiIdea] = useState("");
@@ -522,6 +524,45 @@ function CreateStudioInner() {
       localStorage.removeItem(STORAGE_KEY);
     } catch {}
     setLastAutoSavedTime(null);
+  };
+
+  // Xóa video MP4
+  const handleDeleteVideo = async (video: VideoItem) => {
+    setDeletingFilename(video.filename);
+    try {
+      if (selectedVideo?.filename === video.filename) {
+        setSelectedVideo(null);
+      }
+      if (modalVideo?.filename === video.filename) {
+        setModalVideo(null);
+      }
+      if (typeof document !== "undefined") {
+        document.querySelectorAll("video").forEach((v) => {
+          try {
+            if (v.src && v.src.includes(encodeURIComponent(video.filename))) {
+              v.pause();
+              v.removeAttribute("src");
+              v.load();
+            }
+          } catch {}
+        });
+      }
+
+      const res = await fetch(`/api/videos/${encodeURIComponent(video.filename)}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Không thể xóa video");
+      }
+      setDeleteConfirmVideo(null);
+      setSelectedVideo(null);
+    } catch (err: unknown) {
+      const error = err as Error;
+      alert(`Lỗi khi xóa video: ${error.message}`);
+    } finally {
+      setDeletingFilename(null);
+    }
   };
 
   // Khôi phục bản nháp dở dang từ thanh thông báo
@@ -660,26 +701,6 @@ function CreateStudioInner() {
 
     return () => clearTimeout(timer);
   }, [title, category, channel, provider, voice, slug, conceptA, iconA, conceptB, iconB, scriptLines, isMounted]);
-
-  // Reset to default sample
-  const handleResetDraft = () => {
-    setTitle("Áo bản Player vs Áo bản Fan");
-    setCategory("Công nghệ & Trang bị");
-    setChannel("Phía sau sân cỏ");
-    setProvider("vieneu");
-    setVoice("Hải Đăng");
-    setSlug("ao-player-vs-ao-fan");
-    setConceptA("BẢN PLAYER");
-    setIconA("jersey-player");
-    setConceptB("BẢN FAN");
-    setIconB("jersey-fan");
-    setScriptLines(DEFAULT_SCRIPT);
-    setSavedDraft(null);
-    try {
-      localStorage.removeItem(STORAGE_KEY);
-    } catch {}
-    setLastAutoSavedTime("Đã nạp kịch bản mẫu");
-  };
 
   // Preview Audio only (Instant in 2-3 seconds via VieNeu TTS Local)
   const handlePreviewAudio = async () => {
@@ -1245,15 +1266,15 @@ function CreateStudioInner() {
           <nav className="hidden md:flex items-center bg-[#05130E] p-1 rounded-xl border border-[#EBF8F2]/15 space-x-1">
             <Link
               href="/"
-              className="flex items-center space-x-2 px-4 py-2 rounded-lg text-xs font-bold transition-all text-[#EBF8F2]/70 hover:text-white hover:bg-white/5"
+              className="flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all text-[#EBF8F2]/70 hover:text-white hover:bg-white/5"
             >
-              <Film className="w-4 h-4" />
-              <span>Thư viện Video</span>
+              <Film className="w-3.5 h-3.5" />
+              <span>Thư viện</span>
             </Link>
 
-            <div className="flex items-center space-x-2 px-4 py-2 rounded-lg text-xs font-bold transition-all bg-[#143D2E] text-[#FFD200] shadow border border-[#FFD200]/30">
-              <Sparkles className="w-4 h-4 text-[#FFD200]" />
-              <span>Xưởng Sản Xuất (Studio)</span>
+            <div className="flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-[#143D2E] text-[#FFD200] shadow border border-[#FFD200]/30">
+              <Sparkles className="w-3.5 h-3.5 text-[#FFD200]" />
+              <span>⚔️ Studio So Sánh</span>
             </div>
           </nav>
         </div>
@@ -1267,23 +1288,13 @@ function CreateStudioInner() {
             </div>
           )}
 
-          <button
-            onClick={handleCreateNewVideo}
-            className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-[#10B981] to-[#FFD200] hover:brightness-110 text-[#081C15] font-black text-xs uppercase tracking-wider shadow-md shadow-[#10B981]/20 transition cursor-pointer"
-            title="Làm sạch toàn bộ form để tạo video mới"
-          >
-            <Plus className="w-3.5 h-3.5 stroke-[3]" />
-            <span>Tạo Video Mới</span>
-          </button>
-
-          <button
-            onClick={handleResetDraft}
-            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-[#0E291E] hover:bg-red-950/60 text-[#EBF8F2]/70 hover:text-red-300 border border-[#EBF8F2]/20 hover:border-red-500/40 text-xs font-semibold transition cursor-pointer"
-            title="Khôi phục lại form mẫu ban đầu"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Khôi phục mẫu</span>
-          </button>
+          <CreateVideoDropdown
+            onSelectOption={(type) => {
+              if (type === "compare") {
+                handleCreateNewVideo();
+              }
+            }}
+          />
 
           <Link
             href="/"
@@ -2453,6 +2464,16 @@ function CreateStudioInner() {
                       <Download className="w-4 h-4" />
                       <span>Tải MP4</span>
                     </a>
+
+                    <button
+                      type="button"
+                      onClick={() => setDeleteConfirmVideo(selectedVideo)}
+                      className="flex items-center space-x-1.5 px-3 py-2 rounded-lg bg-[#FF334B]/20 text-[#FF8595] font-bold text-xs hover:bg-[#FF334B]/30 border border-[#FF334B]/40 transition"
+                      title="Xóa video này"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      <span>Xóa</span>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -2500,15 +2521,31 @@ function CreateStudioInner() {
             </div>
 
             <div className="w-full mt-4 flex items-center justify-between gap-3">
-              <a
-                href={modalVideo.url}
-                target="_blank"
-                rel="noreferrer"
-                className="px-3 py-2 rounded-xl bg-[#143D2E] hover:bg-[#10B981]/30 text-xs font-semibold text-[#EBF8F2] border border-[#EBF8F2]/20 flex items-center space-x-1.5 transition"
-              >
-                <ExternalLink className="w-4 h-4" />
-                <span>Mở tab mới</span>
-              </a>
+              <div className="flex items-center space-x-2">
+                <a
+                  href={modalVideo.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-3 py-2 rounded-xl bg-[#143D2E] hover:bg-[#10B981]/30 text-xs font-semibold text-[#EBF8F2] border border-[#EBF8F2]/20 flex items-center space-x-1.5 transition"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  <span>Mở tab mới</span>
+                </a>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const target = modalVideo;
+                    setModalVideo(null);
+                    setDeleteConfirmVideo(target);
+                  }}
+                  className="px-3 py-2 rounded-xl bg-[#FF334B]/15 hover:bg-[#FF334B]/30 text-xs font-semibold text-[#FF8595] border border-[#FF334B]/30 flex items-center space-x-1.5 transition"
+                  title="Xóa video này"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span>Xóa video</span>
+                </button>
+              </div>
 
               <a
                 href={modalVideo.url}
@@ -2518,6 +2555,54 @@ function CreateStudioInner() {
                 <Download className="w-4 h-4" />
                 <span>Tải File MP4</span>
               </a>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm Delete Modal */}
+      {deleteConfirmVideo && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#0E291E] border-2 border-[#FF334B]/50 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div className="flex items-center space-x-3 text-[#FF334B]">
+              <div className="w-10 h-10 rounded-xl bg-[#FF334B]/20 flex items-center justify-center shrink-0">
+                <AlertCircle className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="font-bold text-base text-white">Xác nhận xóa video?</h3>
+                <p className="text-xs text-[#EBF8F2]/60">File video MP4 sẽ bị xóa vĩnh viễn khỏi thư mục output.</p>
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-[#081C15] border border-[#EBF8F2]/10 space-y-1">
+              <p className="text-xs font-bold text-[#FFD200] truncate">{deleteConfirmVideo.title}</p>
+              <p className="text-[11px] font-mono text-[#EBF8F2]/50 truncate">
+                {deleteConfirmVideo.filename} • {deleteConfirmVideo.sizeFormatted}
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end space-x-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setDeleteConfirmVideo(null)}
+                disabled={deletingFilename === deleteConfirmVideo.filename}
+                className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-xs font-bold text-[#EBF8F2] transition"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDeleteVideo(deleteConfirmVideo)}
+                disabled={deletingFilename === deleteConfirmVideo.filename}
+                className="px-4 py-2 rounded-xl bg-[#FF334B] hover:bg-[#e0243b] text-xs font-bold text-white flex items-center space-x-1.5 transition shadow-lg shadow-[#FF334B]/25 disabled:opacity-50"
+              >
+                {deletingFilename === deleteConfirmVideo.filename ? (
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Trash2 className="w-4 h-4" />
+                )}
+                <span>{deletingFilename === deleteConfirmVideo.filename ? "Đang xóa..." : "Xác nhận xóa"}</span>
+              </button>
             </div>
           </div>
         </div>

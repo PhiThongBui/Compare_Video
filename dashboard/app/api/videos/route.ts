@@ -59,3 +59,43 @@ export async function GET() {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
+
+export async function DELETE(req: Request) {
+  try {
+    let filename = "";
+    const { searchParams } = new URL(req.url);
+    filename = searchParams.get("file") || "";
+
+    if (!filename) {
+      try {
+        const body = await req.json();
+        filename = body?.filename || "";
+      } catch {}
+    }
+
+    const safeFilename = path.basename(filename);
+    if (!safeFilename || !safeFilename.toLowerCase().endsWith(".mp4")) {
+      return NextResponse.json({ error: "Tên file video không hợp lệ" }, { status: 400 });
+    }
+
+    const ROOT_DIR = getRootDir();
+    const filePath = path.join(ROOT_DIR, "output", safeFilename);
+
+    if (!fs.existsSync(filePath)) {
+      return NextResponse.json({ error: "Không tìm thấy file video để xóa" }, { status: 404 });
+    }
+
+    fs.unlinkSync(filePath);
+
+    return NextResponse.json({
+      success: true,
+      message: `Đã xóa video ${safeFilename} thành công`,
+      filename: safeFilename,
+    });
+  } catch (error: unknown) {
+    const err = error as Error;
+    console.error("[API DELETE /api/videos] Error:", err);
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
+}
+

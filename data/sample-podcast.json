@@ -1,0 +1,40 @@
+{
+  "slug": "podcast-haaland-vs-mbappe",
+  "title": "Podcast: Haaland hay Mbappe sẽ thống trị bóng đá thế giới?",
+  "channel": "Phía sau sân cỏ • Podcast Talk",
+  "provider": "vieneu",
+  "host": {
+    "name": "Hải Đăng",
+    "voice": "Hải Đăng",
+    "role": "Bình Luận Viên",
+    "avatar": "🎙️"
+  },
+  "guest": {
+    "name": "Thiện Minh",
+    "voice": "Thiện Minh",
+    "role": "Chuyên Gia Chiến Thuật",
+    "avatar": "⚽"
+  },
+  "script": [
+    {
+      "speaker": "host",
+      "tts": "Chào anh Thiện Minh, giữa Haaland và Mbappe, anh đánh giá cỗ máy săn bàn nào toàn diện và đáng sợ hơn?",
+      "caption": "Chào anh Thiện Minh, giữa <span class=\"kw\">Haaland</span> và <span class=\"kw\">Mbappe</span>, ai toàn diện và đáng sợ hơn?"
+    },
+    {
+      "speaker": "guest",
+      "tts": "Chào Hải Đăng, nếu xét về bản năng sát thủ trong vòng cấm, Haaland là số một. Nhưng Mbappe lại có tốc độ và khả năng tự tạo đột biến đỉnh cao.",
+      "caption": "Về bản năng sát thủ vòng cấm, <span class=\"kw\">Haaland</span> là số một. Nhưng <span class=\"kw\">Mbappe</span> lại có tốc độ xé gió và tự tạo đột biến!"
+    },
+    {
+      "speaker": "host",
+      "tts": "Vậy trong các trận cầu đinh tại Champions League, mẫu tiền đạo nào sẽ mang lại sự an tâm tuyệt đối cho huấn luyện viên?",
+      "caption": "Trong các trận cầu đinh tại <span class=\"kw\">Champions League</span>, mẫu tiền đạo nào mang lại sự an tâm tuyệt đối?"
+    },
+    {
+      "speaker": "guest",
+      "tts": "Ở thời điểm knock-out căng thẳng, một khoảnh khắc thiên tài của Mbappe có thể xoay chuyển cục diện trong chớp mắt. Nhưng bạn đánh giá ai cao hơn? Hãy bình luận nhé!",
+      "caption": "Khoảnh khắc thiên tài của <span class=\"kw\">Mbappe</span> có thể định đoạt trận đấu! Còn bạn nể phục ai hơn? <span class=\"kw\">Hãy bình luận!</span>"
+    }
+  ]
+}

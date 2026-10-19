@@ -40,7 +40,7 @@ function loadEnvKey(): string {
   return "";
 }
 
-const SYSTEM_PROMPT = `Bạn là một chuyên gia biên kịch video ngắn hàng đầu cho kênh bóng đá "Phía sau sân cỏ" (format clip dọc TikTok/Reels/Shorts 30-40 giây).
+const SYSTEM_PROMPT_COMPARE = `Bạn là một chuyên gia biên kịch video ngắn hàng đầu cho kênh bóng đá "Phía sau sân cỏ" (format clip dọc TikTok/Reels/Shorts 30-40 giây).
 Nhiệm vụ của bạn là nhận một ý tưởng hoặc chủ đề so sánh bóng đá từ người dùng và xây dựng kịch bản so sánh đúng chuẩn 12 câu kịch tính, ngắn gọn, cuốn hút theo đúng nhịp beat của series.
 
 QUY TẮC BẮT BUỘC VỀ 12 CÂU KỊCH BẢN (ĐÚNG 12 CÂU, KHÔNG THIẾU KHÔNG THỪA):
@@ -97,6 +97,50 @@ Chỉ trả về JSON thuần túy (RAW JSON), KHÔNG bọc trong markdown backt
   "keywordsToHighlight": ["từ khóa 1", "từ khóa 2", "từ khóa 3"]
 }`;
 
+const SYSTEM_PROMPT_PODCAST = `Bạn là một chuyên gia biên kịch video podcast ngắn đỉnh cao cho kênh "Phía sau sân cỏ • Podcast Talk" (format clip dọc TikTok/Reels/Shorts 30-50 giây, đối thoại 2 người: Host và Guest).
+Nhiệm vụ của bạn là nhận chủ đề tranh luận, so sánh hoặc phân tích và xây dựng kịch bản đối thoại kịch tính giữa Host (người dẫn dắt, đặt vấn đề, hỏi xoáy) và Guest (chuyên gia phân tích, đưa ra luận điểm sắc bén, số liệu thực tế).
+
+QUY TẮC BẮT BUỘC VỀ KỊCH BẢN PODCAST (4 ĐẾN 8 LƯỢT ĐỐI THOẠI):
+- Luân phiên giữa speaker "host" và "guest".
+- Lượt 1 (Host mở màn): Câu hỏi hoặc góc nhìn kích thích tò mò ("Này anh, giữa X và Y thì ai đỉnh hơn?").
+- Lượt 2 (Guest phản hồi): Đưa ra nhận định gây bất ngờ + số liệu/chi tiết thực tế thuyết phục.
+- Lượt 3 (Host vặn lại / phản biện): Đặt câu hỏi khó hoặc chỉ ra điểm nghịch lý / đối lập.
+- Lượt 4 (Guest chốt hạ chuyên môn): Đưa ra góc nhìn sâu nhất, chốt hạ quan điểm đẳng cấp.
+- Lượt 5/6 (Tuỳ chọn hoặc Host chốt): Kêu gọi người xem để lại bình luận tranh luận.
+- Mỗi lượt có:
+  + "speaker": "host" hoặc "guest"
+  + "tts": Câu đọc thoại tự nhiên, khẩu ngữ đời thực, nhịp điệu podcast cuốn hút.
+  + "caption": Phụ đề cô đọng, bọc 1-2 từ khóa đắt giá nhất trong dấu sao kép: **từ khóa** (ví dụ: "Này anh Minh, giữa **Haaland** và **Mbappe**, ai mới là **kế vị**?").
+
+ĐỊNH DẠNG ĐẦU RA BẮT BUỘC:
+Chỉ trả về JSON thuần túy (RAW JSON), KHÔNG bọc trong markdown backticks:
+{
+  "title": "Tiêu đề podcast cuốn hút (dưới 50 ký tự)",
+  "host": {
+    "name": "Hải Đăng",
+    "role": "Host / BLV",
+    "avatar": "🎙️"
+  },
+  "guest": {
+    "name": "Thiện Minh",
+    "role": "Chuyên gia phân tích",
+    "avatar": "⭐"
+  },
+  "script": [
+    {
+      "speaker": "host",
+      "tts": "Này anh Minh, giữa Haaland và Mbappe, ai mới thực sự là người kế vị xứng đáng của Messi và Ronaldo?",
+      "caption": "Này anh Minh, giữa **Haaland** và **Mbappe**, ai mới là **kế vị**?"
+    },
+    {
+      "speaker": "guest",
+      "tts": "Mbappe kỹ thuật và toàn diện, nhưng nhìn vào hiệu suất ghi bàn của Haaland ở Ngoại hạng Anh, cậu ấy mới là cỗ máy săn bàn không thể cản phá!",
+      "caption": "Mbappe toàn diện, nhưng **hiệu suất của Haaland** tại **Ngoại hạng Anh** là một **quái vật**!"
+    }
+  ],
+  "keywordsToHighlight": ["Haaland", "Mbappe", "kế vị", "quái vật", "Ngoại hạng Anh"]
+}`;
+
 function cleanJsonResponse(raw: string): string {
   let cleaned = raw.trim();
   if (cleaned.startsWith("```json")) {
@@ -107,19 +151,25 @@ function cleanJsonResponse(raw: string): string {
   if (cleaned.endsWith("```")) {
     cleaned = cleaned.slice(0, -3);
   }
+  cleaned = cleaned.trim();
+  const firstBrace = cleaned.indexOf("{");
+  const lastBrace = cleaned.lastIndexOf("}");
+  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+    cleaned = cleaned.substring(firstBrace, lastBrace + 1);
+  }
   return cleaned.trim();
 }
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { idea, refinePrompt, currentScript } = body;
-
+    const { idea, refinePrompt, currentScript, mode = "compare" } = body;
+    const isPodcast = mode === "podcast";
     const isRefinement = Boolean(refinePrompt && refinePrompt.trim() && currentScript);
 
     if (!isRefinement && (!idea || !idea.trim())) {
       return NextResponse.json(
-        { error: "Vui lòng nhập ý tưởng kịch bản so sánh (ví dụ: So sánh mức lương giữa Messi và Ronaldo)" },
+        { error: isPodcast ? "Vui lòng nhập chủ đề thảo luận podcast" : "Vui lòng nhập ý tưởng kịch bản so sánh" },
         { status: 400 }
       );
     }
@@ -135,14 +185,46 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const activeSystemPrompt = isPodcast ? SYSTEM_PROMPT_PODCAST : SYSTEM_PROMPT_COMPARE;
+
     // Xây dựng prompt phù hợp: Tạo mới hay Tinh chỉnh kịch bản cũ
     let promptText = "";
-    if (isRefinement) {
-      const currentLines = Array.isArray(currentScript.script)
-        ? currentScript.script.map((line: string, idx: number) => `  Câu ${idx + 1}: "${line}"`).join("\n")
-        : "";
+    if (isPodcast) {
+      if (isRefinement) {
+        const curLines = Array.isArray(currentScript?.script)
+          ? currentScript.script
+              .map(
+                (s: { speaker?: string; tts?: string; caption?: string }, idx: number) =>
+                  `  Lượt ${idx + 1} (${s.speaker || "host"}): "${s.tts || s.caption || ""}"`
+              )
+              .join("\n")
+          : "";
 
-      promptText = `BẠN ĐANG TRONG PHIÊN TINH CHỈNH / NÂNG CẤP KỊCH BẢN CŨ.
+        promptText = `BẠN ĐANG TRONG PHIÊN TINH CHỈNH KỊCH BẢN PODCAST Q&A 2 NGƯỜI (HOST & GUEST).
+Chủ đề: "${(idea || currentScript?.title || "Podcast bóng đá").trim()}"
+Host: "${currentScript?.host?.name || "Hải Đăng"}" (${currentScript?.host?.role || "Host"})
+Guest: "${currentScript?.guest?.name || "Thiện Minh"}" (${currentScript?.guest?.role || "Khách mời"})
+
+KỊCH BẢN HIỆN TẠI (PHIÊN BẢN TRƯỚC ĐÓ):
+${curLines}
+
+YÊU CẦU TINH CHỈNH CỦA NGƯỜI DÙNG:
+"${refinePrompt.trim()}"
+
+NHIỆM VỤ:
+1. Viết lại hoặc điều chỉnh kịch bản podcast đáp ứng đúng yêu cầu tinh chỉnh của người dùng.
+2. Giữ nguyên định dạng JSON chuẩn gồm title, host, guest, script (mỗi turn gồm speaker: 'host'|'guest', tts, caption có <span class="kw">...</span>), keywordsToHighlight.
+3. Chỉ trả về RAW JSON.`;
+      } else {
+        promptText = `Chủ đề thảo luận Podcast Q&A 2 người: "${idea.trim()}". Hãy tạo kịch bản đối thoại kịch tính giữa Host và Guest theo đúng chuẩn JSON quy định.`;
+      }
+    } else {
+      if (isRefinement) {
+        const currentLines = Array.isArray(currentScript.script)
+          ? currentScript.script.map((line: string, idx: number) => `  Câu ${idx + 1}: "${line}"`).join("\n")
+          : "";
+
+        promptText = `BẠN ĐANG TRONG PHIÊN TINH CHỈNH / NÂNG CẤP KỊCH BẢN CŨ.
 Chủ đề / Đề tài: "${(idea || currentScript.title || "So sánh bóng đá").trim()}"
 
 KỊCH BẢN HIỆN TẠI (PHIÊN BẢN TRƯỚC ĐÓ):
@@ -163,8 +245,9 @@ Dựa trên kịch bản hiện tại và yêu cầu tinh chỉnh của người
 3. Đề xuất iconA và iconB phù hợp nếu có thay đổi hoặc giữ nguyên emoji hiện có.
 4. Tự động trích xuất lại keywordsToHighlight chính xác theo 12 câu kịch bản mới này.
 5. Chỉ trả về RAW JSON đúng schema đã quy định, không kèm bất kỳ giải thích nào.`;
-    } else {
-      promptText = `Ý tưởng so sánh bóng đá của người dùng: "${idea.trim()}". Hãy tạo kịch bản 12 câu hoàn chỉnh đúng quy chuẩn JSON đã nêu.`;
+      } else {
+        promptText = `Ý tưởng so sánh bóng đá của người dùng: "${idea.trim()}". Hãy tạo kịch bản 12 câu hoàn chỉnh đúng quy chuẩn JSON đã nêu.`;
+      }
     }
 
     let rawOutput = "";
@@ -174,11 +257,11 @@ Dựa trên kịch bản hiện tại và yêu cầu tinh chỉnh của người
       const genAI = new GoogleGenerativeAI(apiKey);
       const configuredModel = process.env.GEMINI_MODEL;
       const candidateModels = configuredModel
-        ? [configuredModel, "gemini-3.5-flash", "gemini-3.7-flash", "gemini-3.8-flash", "gemini-3.1-flash-lite"]
+        ? [configuredModel, "gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.5-flash", "gemini-3.1-flash-lite"]
         : [
-            "gemini-3.5-flash",
-            "gemini-3.7-flash",
             "gemini-3.8-flash",
+            "gemini-3.7-flash",
+            "gemini-3.5-flash",
             "gemini-3.1-flash-lite",
             "gemini-3.5-flash-lite",
           ];
@@ -192,7 +275,7 @@ Dựa trên kịch bản hiện tại và yêu cầu tinh chỉnh của người
               responseMimeType: "application/json",
               temperature: 0.7,
             },
-            systemInstruction: SYSTEM_PROMPT,
+            systemInstruction: activeSystemPrompt,
           });
 
           const result = await model.generateContent(promptText);
@@ -219,7 +302,7 @@ Dựa trên kịch bản hiện tại và yêu cầu tinh chỉnh của người
         response_format: { type: "json_object" },
         temperature: 0.7,
         messages: [
-          { role: "system", content: SYSTEM_PROMPT },
+          { role: "system", content: activeSystemPrompt },
           {
             role: "user",
             content: promptText,
@@ -231,16 +314,7 @@ Dựa trên kịch bản hiện tại và yêu cầu tinh chỉnh của người
     }
 
     const cleanedJson = cleanJsonResponse(rawOutput);
-    let parsedData: {
-      title?: string;
-      category?: string;
-      conceptA?: string;
-      conceptB?: string;
-      iconA?: string;
-      iconB?: string;
-      script?: string[];
-      keywordsToHighlight?: string[];
-    };
+    let parsedData: any;
 
     try {
       parsedData = JSON.parse(cleanedJson);
@@ -248,7 +322,45 @@ Dựa trên kịch bản hiện tại và yêu cầu tinh chỉnh của người
       throw new Error("Mô hình AI trả về dữ liệu không đúng định dạng JSON: " + rawOutput.slice(0, 100));
     }
 
-    // Đảm bảo cấu trúc an toàn
+    if (isPodcast) {
+      const scriptTurns = Array.isArray(parsedData.script) ? parsedData.script : [];
+      if (scriptTurns.length === 0) {
+        throw new Error("Không tạo được danh sách lượt đối thoại podcast hợp lệ.");
+      }
+
+      return NextResponse.json({
+        success: true,
+        mode: "podcast",
+        data: {
+          title: parsedData.title || (idea ? idea.slice(0, 45) : "Podcast bóng đá"),
+          host: {
+            name: parsedData.host?.name || "Hải Đăng",
+            role: parsedData.host?.role || "Host / Dẫn chương trình",
+            avatar: parsedData.host?.avatar || "🎙️",
+          },
+          guest: {
+            name: parsedData.guest?.name || "Thiện Minh",
+            role: parsedData.guest?.role || "Chuyên gia phân tích",
+            avatar: parsedData.guest?.avatar || "⭐",
+          },
+          script: scriptTurns.map((turn: any) => {
+            const rawTts = (turn.tts || turn.caption || "").replace(/\*\*/g, "").replace(/<[^>]+>/g, "");
+            let rawCaption = turn.caption || turn.tts || "";
+            if (rawCaption.includes("**")) {
+              rawCaption = rawCaption.replace(/\*\*(.*?)\*\*/g, '<span class="kw">$1</span>');
+            }
+            return {
+              speaker: turn.speaker === "guest" ? "guest" : "host",
+              tts: rawTts,
+              caption: rawCaption,
+            };
+          }),
+          keywordsToHighlight: Array.isArray(parsedData.keywordsToHighlight) ? parsedData.keywordsToHighlight : [],
+        },
+      });
+    }
+
+    // Đảm bảo cấu trúc an toàn cho compare mode
     const scriptArray = Array.isArray(parsedData.script) ? parsedData.script : [];
     if (scriptArray.length === 0) {
       throw new Error("Không tạo được danh sách 12 câu kịch bản hợp lệ.");
@@ -256,8 +368,9 @@ Dựa trên kịch bản hiện tại và yêu cầu tinh chỉnh của người
 
     return NextResponse.json({
       success: true,
+      mode: "compare",
       data: {
-        title: parsedData.title || idea.slice(0, 45),
+        title: parsedData.title || (idea ? idea.slice(0, 45) : "So sánh bóng đá"),
         category: parsedData.category || "Kiến thức bóng đá",
         conceptA: (parsedData.conceptA || "VẾ A").toUpperCase().slice(0, 25),
         conceptB: (parsedData.conceptB || "VẾ B").toUpperCase().slice(0, 25),
