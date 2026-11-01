@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, Suspense } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   Download,
   RefreshCw,
@@ -30,6 +31,7 @@ import {
   RotateCcw,
 } from "lucide-react";
 import CreateVideoDropdown from "@/components/CreateVideoDropdown";
+import TtsEmotionToolbar from "@/components/TtsEmotionToolbar";
 
 interface ScriptTurn {
   speaker: "host" | "guest";
@@ -66,7 +68,10 @@ const DEFAULT_INITIAL_TURNS: ScriptTurn[] = [
 
 const STORAGE_KEY = "podcast_video_studio_draft_v1";
 
-export default function PodcastStudioPage() {
+function PodcastStudioContent() {
+  const searchParams = useSearchParams();
+  const templateSlug = searchParams?.get("template") || searchParams?.get("slug");
+
   const [title, setTitle] = useState("");
   const [channel, setChannel] = useState("Phía sau sân cỏ • Podcast Talk");
   const [provider, setProvider] = useState<"vieneu" | "edge">("vieneu");
@@ -110,8 +115,56 @@ export default function PodcastStudioPage() {
   // Draft auto-save
   const [lastAutoSavedTime, setLastAutoSavedTime] = useState<string | null>(null);
 
-  // Load draft on mount
+  // Load draft or template on mount
   useEffect(() => {
+    if (templateSlug) {
+      fetch("/api/data-templates")
+        .then((r) => r.json())
+        .then((res) => {
+          if (res.templates) {
+            const cleanSlug = decodeURIComponent(templateSlug).trim();
+            const found = res.templates.find(
+              (t: any) =>
+                t.slug === cleanSlug ||
+                t.slug === templateSlug ||
+                t.filename === cleanSlug ||
+                t.filename === `${cleanSlug}.json` ||
+                t.title === cleanSlug
+            );
+            if (found && found.data) {
+              const d = found.data;
+              if (d.title || found.title) setTitle(d.title || found.title);
+              if (d.channel) setChannel(d.channel);
+              if (d.slug || found.slug) setSlug(d.slug || found.slug);
+              if (d.provider) setProvider(d.provider);
+              if (d.host) {
+                if (d.host.name) setHostName(d.host.name);
+                if (d.host.role) setHostRole(d.host.role);
+                if (d.host.voice) setHostVoice(d.host.voice);
+                if (d.host.avatar) setHostAvatar(d.host.avatar);
+              }
+              if (d.guest) {
+                if (d.guest.name) setGuestName(d.guest.name);
+                if (d.guest.role) setGuestRole(d.guest.role);
+                if (d.guest.voice) setGuestVoice(d.guest.voice);
+                if (d.guest.avatar) setGuestAvatar(d.guest.avatar);
+              }
+              if (Array.isArray(d.script)) {
+                const turns: ScriptTurn[] = d.script.map((s: any) => ({
+                  speaker: s.speaker || "host",
+                  tts: s.tts || (typeof s === "string" ? s : ""),
+                  caption: s.caption || s.tts || (typeof s === "string" ? s : ""),
+                }));
+                setScriptTurns(turns);
+              }
+              setLastAutoSavedTime(`Đã nạp mẫu: ${d.title || found.title}`);
+            }
+          }
+        })
+        .catch(() => { });
+      return;
+    }
+
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
@@ -137,8 +190,8 @@ export default function PodcastStudioPage() {
         }
         setLastAutoSavedTime("Đã khôi phục từ bản nháp");
       }
-    } catch {}
-  }, []);
+    } catch { }
+  }, [templateSlug]);
 
   // Save draft on changes
   useEffect(() => {
@@ -155,7 +208,7 @@ export default function PodcastStudioPage() {
         };
         localStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
         setLastAutoSavedTime(new Date().toLocaleTimeString("vi-VN"));
-      } catch {}
+      } catch { }
     }, 500);
     return () => clearTimeout(timer);
   }, [title, channel, slug, provider, hostName, hostRole, hostVoice, hostAvatar, guestName, guestRole, guestVoice, guestAvatar, scriptTurns]);
@@ -179,7 +232,7 @@ export default function PodcastStudioPage() {
     ]);
     try {
       localStorage.removeItem(STORAGE_KEY);
-    } catch {}
+    } catch { }
     setLastAutoSavedTime("Đã làm mới form");
   };
 
@@ -202,7 +255,7 @@ export default function PodcastStudioPage() {
             v.pause();
             v.removeAttribute("src");
             v.load();
-          } catch {}
+          } catch { }
         });
       }
 
@@ -421,16 +474,16 @@ export default function PodcastStudioPage() {
     const payload =
       mode === "json"
         ? JSON.stringify(
-            {
-              title,
-              channel,
-              host: { name: hostName, role: hostRole, voice: hostVoice, avatar: hostAvatar },
-              guest: { name: guestName, role: guestRole, voice: guestVoice, avatar: guestAvatar },
-              script: scriptTurns,
-            },
-            null,
-            2
-          )
+          {
+            title,
+            channel,
+            host: { name: hostName, role: hostRole, voice: hostVoice, avatar: hostAvatar },
+            guest: { name: guestName, role: guestRole, voice: guestVoice, avatar: guestAvatar },
+            script: scriptTurns,
+          },
+          null,
+          2
+        )
         : getFullScriptExportText();
 
     navigator.clipboard.writeText(payload);
@@ -782,11 +835,10 @@ export default function PodcastStudioPage() {
                 <button
                   type="button"
                   onClick={() => setProvider("vieneu")}
-                  className={`flex-1 py-2.5 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition-all ${
-                    provider === "vieneu"
+                  className={`flex-1 py-2.5 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition-all ${provider === "vieneu"
                       ? "bg-[#0E3547] border-[#00E5FF] text-[#00E5FF]"
                       : "bg-[#070D12] border-white/10 text-[#94A3B8] hover:text-white"
-                  }`}
+                    }`}
                 >
                   <Zap className="w-3.5 h-3.5" />
                   <span>VieNeu TTS (Local 48kHz ⭐)</span>
@@ -794,11 +846,10 @@ export default function PodcastStudioPage() {
                 <button
                   type="button"
                   onClick={() => setProvider("edge")}
-                  className={`flex-1 py-2.5 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition-all ${
-                    provider === "edge"
+                  className={`flex-1 py-2.5 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition-all ${provider === "edge"
                       ? "bg-[#0E3547] border-[#00E5FF] text-[#00E5FF]"
                       : "bg-[#070D12] border-white/10 text-[#94A3B8] hover:text-white"
-                  }`}
+                    }`}
                 >
                   <span>Edge TTS (Cloud Dự phòng)</span>
                 </button>
@@ -990,17 +1041,22 @@ export default function PodcastStudioPage() {
             </button>
           </div>
 
+          {/* THANH CÔNG CỤ CHÈN THẺ CẢM XÚC & ƯỚC TÍNH THỜI LƯỢNG AUDIO */}
+          <TtsEmotionToolbar
+            text={scriptTurns.map((t) => t.tts || t.caption).join(" ")}
+            className="mb-4"
+          />
+
           <div className="space-y-4">
             {scriptTurns.map((turn, index) => {
               const isHost = turn.speaker === "host";
               return (
                 <div
                   key={index}
-                  className={`p-4 rounded-xl border transition-all ${
-                    isHost
+                  className={`p-4 rounded-xl border transition-all ${isHost
                       ? "bg-[#07131B] border-[#00E5FF]/30 hover:border-[#00E5FF]/60"
                       : "bg-[#141208] border-[#FFD200]/30 hover:border-[#FFD200]/60"
-                  }`}
+                    }`}
                 >
                   <div className="flex items-center justify-between gap-3 mb-2.5">
                     <div className="flex items-center gap-2">
@@ -1010,11 +1066,10 @@ export default function PodcastStudioPage() {
                       <button
                         type="button"
                         onClick={() => handleToggleSpeaker(index)}
-                        className={`px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider flex items-center gap-1.5 border transition-all ${
-                          isHost
+                        className={`px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider flex items-center gap-1.5 border transition-all ${isHost
                             ? "bg-[#00E5FF]/20 text-[#00E5FF] border-[#00E5FF]/50 shadow-sm shadow-[#00E5FF]/20"
                             : "bg-[#FFD200]/20 text-[#FFD200] border-[#FFD200]/50 shadow-sm shadow-[#FFD200]/20"
-                        }`}
+                          }`}
                       >
                         {isHost ? (
                           <>
@@ -1043,6 +1098,23 @@ export default function PodcastStudioPage() {
                           {previewingTurnIndex === index ? "Đang phát..." : "Nghe"}
                         </span>
                       </button>
+
+                      {/\[(?:cười|hắng giọng|thở dài|lấy hơi|nghỉ|nghi|pause)[^\]]*\]/i.test(turn.tts || "") && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const cleaned = (turn.tts || "")
+                              .replace(/\[(?:cười|hắng giọng|thở dài|lấy hơi|nghỉ|nghi|pause)[^\]]*\]\s*/gi, "")
+                              .replace(/\s{2,}/g, " ")
+                              .trim();
+                            handleUpdateTurn(index, "tts", cleaned);
+                          }}
+                          className="px-2 py-1 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-xs text-red-300 flex items-center gap-1 transition-all cursor-pointer"
+                          title="Xóa toàn bộ tag cảm xúc trong câu đối thoại này"
+                        >
+                          <span>🧹 Xóa tag</span>
+                        </button>
+                      )}
 
                       <button
                         type="button"
@@ -1212,5 +1284,19 @@ export default function PodcastStudioPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function PodcastStudioPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-[#070D12] flex items-center justify-center text-[#00E5FF] font-bold text-sm">
+          Đang nạp Studio Podcast...
+        </div>
+      }
+    >
+      <PodcastStudioContent />
+    </Suspense>
   );
 }

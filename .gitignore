@@ -18,6 +18,19 @@ node_modules/
 renders/
 snapshots/
 
+# Global render outputs, temp builds and audio previews
+output/
+!output/.gitkeep
+
+# User media uploads, stock downloads, and generated timeline voiceovers
+data/stock-uploads/
+!data/stock-uploads/.gitkeep
+
+# Temporary files & caches
+tmp/
+temp/
+*.tmp
+
 # Only these two videos are meant to be pushed to this repo; every other
 # videos/<name>/ directory (new topics, experiments, etc.) stays local-only.
 # Add a matching "!videos/<name>/" line here if another video should be shared.

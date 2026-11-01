@@ -33,6 +33,7 @@ import {
   ChevronUp,
 } from "lucide-react";
 import CreateVideoDropdown from "@/components/CreateVideoDropdown";
+import TtsEmotionToolbar from "@/components/TtsEmotionToolbar";
 
 interface ScriptLine {
   tts: string;
@@ -408,6 +409,11 @@ function CreateStudioInner() {
   const [isPlayingPreview, setIsPlayingPreview] = useState(false);
   const previewAudioRef = useRef<HTMLAudioElement | null>(null);
 
+  // Single Line Audio preview state
+  const [previewingLineIdx, setPreviewingLineIdx] = useState<number | null>(null);
+  const [isLoadingPreviewLine, setIsLoadingPreviewLine] = useState<number | null>(null);
+  const singleLineAudioRef = useRef<HTMLAudioElement | null>(null);
+
   // Auto-save feedback state
   const [lastAutoSavedTime, setLastAutoSavedTime] = useState<string | null>(null);
 
@@ -605,7 +611,15 @@ function CreateStudioInner() {
         .then((r) => r.json())
         .then((res) => {
           if (res.templates) {
-            const found = res.templates.find((t: TemplateItem) => t.slug === templateSlug);
+            const cleanSlug = decodeURIComponent(templateSlug).trim();
+            const found = res.templates.find(
+              (t: TemplateItem) =>
+                t.slug === cleanSlug ||
+                t.slug === templateSlug ||
+                t.filename === cleanSlug ||
+                t.filename === `${cleanSlug}.json` ||
+                t.title === cleanSlug
+            );
             if (found && found.data) {
               const d = found.data;
               setTitle(d.title || found.title);
@@ -613,11 +627,23 @@ function CreateStudioInner() {
               if (d.category) setCategory(d.category);
               if (d.channel) setChannel(d.channel);
               if (d.left?.name) setConceptA(d.left.name);
+              else if (d.conceptA) setConceptA(d.conceptA);
+
               if (d.left?.icon) setIconA(d.left.icon);
+              else if (d.iconA) setIconA(d.iconA);
+
               if (d.right?.name) setConceptB(d.right.name);
+              else if (d.conceptB) setConceptB(d.conceptB);
+
               if (d.right?.icon) setIconB(d.right.icon);
+              else if (d.iconB) setIconB(d.iconB);
+
               if (d.provider === "vieneu" || d.provider === "edge") {
                 setProvider(d.provider);
+              } else if (d.voice && d.voice.includes("Neural")) {
+                setProvider("edge");
+              } else {
+                setProvider("vieneu");
               }
               if (d.voice) setVoice(d.voice);
               if (Array.isArray(d.script)) {
@@ -630,6 +656,9 @@ function CreateStudioInner() {
                     caption: item.caption || item.tts || "",
                   };
                 });
+                while (formatted.length < 12) {
+                  formatted.push({ tts: "", caption: "" });
+                }
                 setScriptLines(formatted);
               }
               setLastAutoSavedTime("Đã nạp mẫu: " + (d.title || found.title));
@@ -745,6 +774,72 @@ function CreateStudioInner() {
       alert("Lỗi nghe thử audio: " + error.message);
     } finally {
       setIsPreviewingAudio(false);
+    }
+  };
+
+  // Nghe thử âm thanh của từng câu riêng lẻ
+  const handlePreviewSingleLine = async (idx: number) => {
+    if (previewingLineIdx === idx) {
+      if (singleLineAudioRef.current) {
+        singleLineAudioRef.current.pause();
+      }
+      setPreviewingLineIdx(null);
+      return;
+    }
+
+    const line = scriptLines[idx];
+    const text = (line?.tts || stripHtml(line?.caption || "")).trim();
+    if (!text) {
+      alert("Vui lòng nhập nội dung câu này trước khi nghe thử!");
+      return;
+    }
+
+    if (singleLineAudioRef.current) singleLineAudioRef.current.pause();
+    if (previewAudioRef.current) {
+      previewAudioRef.current.pause();
+      setIsPlayingPreview(false);
+    }
+
+    setIsLoadingPreviewLine(idx);
+    try {
+      const res = await fetch("/api/preview-audio", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          script: text,
+          provider,
+          voice,
+          speed: 1.0,
+          customSlug: `line-${idx}-${Date.now()}`,
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || "Không thể tạo audio câu này.");
+      }
+
+      const audioUrl = data.audioUrl || data.url;
+      if (!audioUrl) throw new Error("Không nhận được link audio.");
+
+      if (!singleLineAudioRef.current) {
+        singleLineAudioRef.current = new Audio();
+      }
+      singleLineAudioRef.current.src = audioUrl;
+      singleLineAudioRef.current.onended = () => setPreviewingLineIdx(null);
+      singleLineAudioRef.current.onerror = () => {
+        setPreviewingLineIdx(null);
+        alert("Lỗi phát audio!");
+      };
+
+      await singleLineAudioRef.current.play();
+      setPreviewingLineIdx(idx);
+    } catch (err: unknown) {
+      const error = err as Error;
+      alert(`Lỗi nghe thử câu ${idx + 1}: ${error.message}`);
+      setPreviewingLineIdx(null);
+    } finally {
+      setIsLoadingPreviewLine(null);
     }
   };
 
@@ -2098,11 +2193,54 @@ function CreateStudioInner() {
                   </button>
                   <button
                     type="button"
+                    onClick={() => insertEmotionTag("[lấy hơi]")}
+                    className="px-2 py-0.5 rounded bg-teal-950/60 hover:bg-teal-900 text-teal-300 text-xs font-semibold border border-teal-500/30 transition"
+                    title="Chèn lấy hơi tự nhiên (VieNeu Turbo)"
+                  >
+                    🫁 [lấy hơi]
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => insertEmotionTag("[nghỉ 1s]")}
                     className="px-2 py-0.5 rounded bg-amber-950/60 hover:bg-amber-900 text-amber-300 text-xs font-semibold border border-amber-500/30 transition"
                     title="Chèn khoảng lặng đúng 1 giây"
                   >
                     ⏸️ [nghỉ 1s]
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (activeLineIdx !== null) {
+                        const line = scriptLines[activeLineIdx];
+                        const cleanedCap = (line.caption || "")
+                          .replace(/\[(?:cười|hắng giọng|thở dài|lấy hơi|nghỉ|nghi|pause)[^\]]*\]\s*/gi, "")
+                          .replace(/\s{2,}/g, " ")
+                          .trim();
+                        const cleanedTts = (line.tts || "")
+                          .replace(/\[(?:cười|hắng giọng|thở dài|lấy hơi|nghỉ|nghi|pause)[^\]]*\]\s*/gi, "")
+                          .replace(/\s{2,}/g, " ")
+                          .trim();
+                        updateLine(activeLineIdx, "caption", cleanedCap);
+                        updateLine(activeLineIdx, "tts", cleanedTts);
+                      } else {
+                        setScriptLines((prev) =>
+                          prev.map((l) => ({
+                            caption: (l.caption || "")
+                              .replace(/\[(?:cười|hắng giọng|thở dài|lấy hơi|nghỉ|nghi|pause)[^\]]*\]\s*/gi, "")
+                              .replace(/\s{2,}/g, " ")
+                              .trim(),
+                            tts: (l.tts || "")
+                              .replace(/\[(?:cười|hắng giọng|thở dài|lấy hơi|nghỉ|nghi|pause)[^\]]*\]\s*/gi, "")
+                              .replace(/\s{2,}/g, " ")
+                              .trim(),
+                          }))
+                        );
+                      }
+                    }}
+                    className="px-2 py-0.5 rounded bg-red-950/60 hover:bg-red-900 text-red-300 text-xs font-semibold border border-red-500/30 transition cursor-pointer"
+                    title={activeLineIdx !== null ? `Xóa toàn bộ thẻ cảm xúc trong câu #${activeLineIdx + 1}` : "Xóa toàn bộ thẻ cảm xúc trong cả bài"}
+                  >
+                    🧹 Bỏ tag
                   </button>
                 </div>
               </div>
@@ -2111,6 +2249,12 @@ function CreateStudioInner() {
             <p className="text-xs text-[#EBF8F2]/60 mb-4">
               ✨ <b>Soạn thảo trực quan:</b> Bôi đen từ khóa để tô màu chữ trên video. Bấm nút <b>[cười]</b>, <b>[thở dài]</b> hoặc <b>[nghỉ 1s]</b> để chèn biểu cảm và khoảng lặng cho giọng đọc CIT Voice Studio.
             </p>
+
+            {/* THANH CÔNG CỤ CHÈN THẺ CẢM XÚC & ƯỚC TÍNH THỜI LƯỢNG AUDIO */}
+            <TtsEmotionToolbar
+              text={scriptLines.map((l) => l.tts || stripHtml(l.caption)).join(" ")}
+              className="mb-4"
+            />
 
             {/* List of lines */}
             <div className="space-y-3.5 max-h-[520px] overflow-y-auto pr-2">
@@ -2160,6 +2304,63 @@ function CreateStudioInner() {
                       </div>
 
                       <div className="flex items-center space-x-2">
+                        {/* Nút nghe thử âm thanh câu riêng lẻ */}
+                        <button
+                          type="button"
+                          onClick={() => handlePreviewSingleLine(idx)}
+                          disabled={isLoadingPreviewLine === idx || !(line.tts?.trim() || stripHtml(line.caption || "").trim())}
+                          className={`text-[11px] px-2.5 py-1 rounded-lg flex items-center space-x-1 font-bold transition cursor-pointer shadow-sm ${
+                            previewingLineIdx === idx
+                              ? "bg-amber-400 text-[#081C15] font-extrabold hover:bg-amber-300 animate-pulse shadow-amber-400/30"
+                              : "text-[#10B981] hover:text-[#FFD200] bg-[#10B981]/15 hover:bg-[#10B981]/25 border border-[#10B981]/30"
+                          } disabled:opacity-30 disabled:cursor-not-allowed`}
+                          title={
+                            previewingLineIdx === idx
+                              ? "Dừng phát câu này"
+                              : "Nghe thử âm thanh câu này"
+                          }
+                        >
+                          {isLoadingPreviewLine === idx ? (
+                            <>
+                              <Loader2 className="w-3 h-3 animate-spin text-[#FFD200]" />
+                              <span>Đang tạo...</span>
+                            </>
+                          ) : previewingLineIdx === idx ? (
+                            <>
+                              <Pause className="w-3 h-3 fill-current" />
+                              <span>Dừng</span>
+                            </>
+                          ) : (
+                            <>
+                              <Volume2 className="w-3 h-3" />
+                              <span>Nghe câu</span>
+                            </>
+                          )}
+                        </button>
+
+                        {/* Nút xóa tag cảm xúc riêng câu này */}
+                        {/\[(?:cười|hắng giọng|thở dài|lấy hơi|nghỉ|nghi|pause)[^\]]*\]/i.test(line.tts || line.caption || "") && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const cleanedCap = (line.caption || "")
+                                .replace(/\[(?:cười|hắng giọng|thở dài|lấy hơi|nghỉ|nghi|pause)[^\]]*\]\s*/gi, "")
+                                .replace(/\s{2,}/g, " ")
+                                .trim();
+                              const cleanedTts = (line.tts || "")
+                                .replace(/\[(?:cười|hắng giọng|thở dài|lấy hơi|nghỉ|nghi|pause)[^\]]*\]\s*/gi, "")
+                                .replace(/\s{2,}/g, " ")
+                                .trim();
+                              updateLine(idx, "caption", cleanedCap);
+                              updateLine(idx, "tts", cleanedTts);
+                            }}
+                            className="text-[11px] px-2 py-1 rounded-lg text-red-300 hover:text-red-200 bg-red-500/15 hover:bg-red-500/25 border border-red-500/30 font-semibold transition cursor-pointer"
+                            title="Xóa tất cả tag cảm xúc trong câu này"
+                          >
+                            🧹 Bỏ tag
+                          </button>
+                        )}
+
                         <button
                           type="button"
                           onClick={() =>

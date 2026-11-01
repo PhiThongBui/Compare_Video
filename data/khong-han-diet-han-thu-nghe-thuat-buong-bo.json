@@ -1,0 +1,62 @@
+{
+  "slug": "khong-han-diet-han-thu-nghe-thuat-buong-bo",
+  "title": "Nghệ thuật buông bỏ: Tự cởi trói cho chính mình",
+  "provider": "vieneu",
+  "voice": "Hải Đăng",
+  "speed": 0.93,
+  "sections": [
+    {
+      "section": "HOOK THỰC TẾ (0 - 8s)",
+      "tagline": "(Đánh thức trải nghiệm đời thực)",
+      "textTo": "Trằn trọc lúc 1 giờ sáng vì một câu nói?",
+      "visual": "Cận cảnh người ngồi tựa đầu vào cửa sổ xe ban đêm, ánh đèn thành phố phản chiếu trên kính mờ ảo. (Stock: lonely night window rain city lights cinematic vertical)",
+      "voiceover": "Đêm qua, [lấy hơi] bạn có nằm trằn trọc lúc một giờ sáng [thở dài] chỉ vì ấm ức một câu xúc phạm của ai đó không? [nghỉ 1.2s]",
+      "audioEffect": "Tiếng đồng hồ tích tắc chậm rãi, điểm xuyết một tiếng thở dài trầm nhẹ ở giây đầu tiên."
+    },
+    {
+      "section": "GIẢI MÃ TÂM LÝ (8 - 25s)",
+      "tagline": "(Bẻ gãy lầm tưởng)",
+      "textTo": "Kẻ làm bạn đau... đã ngủ say từ lâu rồi.",
+      "visual": "Hình ảnh ngọn lửa bùng cháy dữ dội trong bóng tối, tàn tro bay lơ lửng slow-motion. (Stock: fire burning dark slow motion embers cinematic)",
+      "voiceover": "Lý do bạn không thể buông bỏ sự tức giận, không phải vì bạn yếu đuối. Mà vì tiềm thức đang nhầm lẫn rằng: tha thứ đồng nghĩa với việc chấp nhận mình thua cuộc. [nghỉ 1.0s] Nhưng sự thật là: kẻ làm bạn tổn thương, họ đã ngủ say từ lâu rồi. [thở dài] Chỉ có bạn là đang tự giam mình trong ngục tối do chính họ tạo ra. [nghỉ 1.2s]",
+      "audioEffect": "BGM tiếng piano trầm buồn bắt đầu cất lên da diết, âm lượng 15%."
+    },
+    {
+      "section": "CÔNG CỤ THỰC HÀNH (25 - 55s)",
+      "tagline": "(Quy tắc hành động cụ thể)",
+      "textTo": "Quy tắc 2 bước để cởi trói cảm xúc",
+      "visual": "Bàn tay mở ra buông rơi một nắm cát trong gió biển, chuyển sang cảnh bước chân điềm tĩnh dạo bước giữa rừng cây xanh mướt. (Stock: hand releasing sand slow motion zen forest walk)",
+      "voiceover": "[hắng giọng] Lần tới khi cơn uất ức bùng lên, hãy làm đúng hai bước này: [nghỉ 0.6s] Bước một: Đừng cố tha thứ ngay. Hãy [lấy hơi] hít thật sâu và tự nhắc mình: 'Chuyện đã qua rồi, cảm xúc này chỉ là vị khách qua đường, nó không phải là tôi.' [nghỉ 0.8s] Bước hai: Tách con người ra khỏi hành vi. Họ cư xử tệ hại vì tâm hồn họ chứa đầy rác rưởi, điều đó phản chiếu con người họ, chứ không quyết định giá trị của bạn. [nghỉ 1.2s]",
+      "audioEffect": "Tiếng chuông xoay Tây Tạng (Singing Bowl) ngân vang tĩnh tại, âm điệu piano trở nên trong trẻo, nhẹ nhõm."
+    },
+    {
+      "section": "LẮNG ĐỌNG & DƯ ÂM (55 - 70s)",
+      "tagline": "(Đúc kết chạm cảm xúc)",
+      "textTo": "Buông bỏ... là tự do.",
+      "visual": "Góc quay rộng mặt hồ phẳng lặng như gương lúc bình minh, ánh nắng sớm xuyên qua sương mờ. (Stock: calm lake sunrise silhouette peaceful 4k vertical)",
+      "voiceover": "Buông bỏ... [nghỉ 0.8s] không phải là làm hòa với đối phương. [cười] Mà là trả lại tự do... [nghỉ 0.8s] cho chính bản thân mình. [nghỉ 1.0s] Hôm nay, bạn đã sẵn sàng bước ra khỏi cánh cửa ngục đó chưa?",
+      "audioEffect": "Tiếng chuông ngân dài vang vọng rồi nhỏ dần vào tiếng gió thoảng thanh bình."
+    }
+  ],
+  "script": [
+    "Đêm qua, [lấy hơi] bạn có nằm trằn trọc lúc một giờ sáng [thở dài] chỉ vì ấm ức một câu xúc phạm của ai đó không? [nghỉ 1.2s]",
+    "Lý do bạn không thể buông bỏ sự tức giận, không phải vì bạn yếu đuối. Mà vì tiềm thức đang nhầm lẫn rằng: tha thứ đồng nghĩa với việc chấp nhận mình thua cuộc. [nghỉ 1.0s] Nhưng sự thật là: kẻ làm bạn tổn thương, họ đã ngủ say từ lâu rồi. [thở dài] Chỉ có bạn là đang tự giam mình trong ngục tối do chính họ tạo ra. [nghỉ 1.2s]",
+    "[hắng giọng] Lần tới khi cơn uất ức bùng lên, hãy làm đúng hai bước này: [nghỉ 0.6s] Bước một: Đừng cố tha thứ ngay. Hãy [lấy hơi] hít thật sâu và tự nhắc mình: 'Chuyện đã qua rồi, cảm xúc này chỉ là vị khách qua đường, nó không phải là tôi.' [nghỉ 0.8s] Bước hai: Tách con người ra khỏi hành vi. Họ cư xử tệ hại vì tâm hồn họ chứa đầy rác rưởi, điều đó phản chiếu con người họ, chứ không quyết định giá trị của bạn. [nghỉ 1.2s]",
+    "Buông bỏ... [nghỉ 0.8s] không phải là làm hòa với đối phương. [cười] Mà là trả lại tự do... [nghỉ 0.8s] cho chính bản thân mình. [nghỉ 1.0s] Hôm nay, bạn đã sẵn sàng bước ra khỏi cánh cửa ngục đó chưa?"
+  ],
+  "stockVideos": [],
+  "stockDir": "",
+  "bgmPath": "",
+  "bgmVolume": 0.12,
+  "subtitles": {
+    "fontName": "Montserrat",
+    "fontSize": 70,
+    "baseColor": "#FFF8E7",
+    "highlightColor": "#FFD200",
+    "outlineColor": "#000000",
+    "outlineWidth": 6,
+    "position": "center",
+    "wordsPerChunk": 4,
+    "animation": "smooth"
+  }
+}

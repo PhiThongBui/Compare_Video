@@ -1,0 +1,62 @@
+{
+  "slug": "thuong-lay-nhung-vet-nut-cua-chinh-minh",
+  "title": "Thương Lấy Những Vết Nứt Của Chính Mình",
+  "provider": "vieneu",
+  "voice": "Hải Đăng",
+  "speed": 1,
+  "sections": [
+    {
+      "section": "HOOK THỰC TẾ (0 - 8s)",
+      "tagline": "(Đánh thức trải nghiệm đời thực)",
+      "textTo": "Gõ rồi lại xóa... Bạn đang sợ điều gì?",
+      "visual": "Cận cảnh ngón tay ngập ngừng gõ rồi liên tục bấm phím xóa tin nhắn trên màn hình điện thoại trong căn phòng tối mờ. (Stock: close up hands typing deleting text message phone dark room cinematic vertical)",
+      "voiceover": "Bạn có bao giờ ngồi trước màn hình [thở dài], gõ đi xóa lại một dòng tin nhắn suốt nửa tiếng [nghỉ 1.0s], chỉ vì sợ người ta đánh giá mình ngớ ngẩn không?",
+      "audioEffect": "Tiếng gõ phím lách cách ngập ngừng, tiếng thở dài trầm lắng ở giây đầu tiên."
+    },
+    {
+      "section": "GIẢI MÃ TÂM LÝ (8 - 25s)",
+      "tagline": "(Bẻ gãy lầm tưởng)",
+      "textTo": "Cầu toàn là chiếc khiên... che giấu nỗi sợ.",
+      "visual": "Cận cảnh chiếc chén gốm mộc có vết rạn nứt tự nhiên đang được phủ lên lớp bột vàng theo nghệ thuật Kintsugi, ánh sáng mềm mại. (Stock: kintsugi art repairing broken ceramic with gold dust cinematic macro vertical)",
+      "voiceover": "Chủ nghĩa hoàn hảo không phải là tiêu chuẩn cao. [nghỉ 0.8s] Đó thực chất là chiếc khiên nặng nề [thở dài], bạn dựng lên để che giấu nỗi sợ bị từ chối. [lấy hơi] Triết lý Wabi Sabi nhắc chúng ta rằng: vạn vật vốn dĩ luôn khiếm khuyết [nghỉ 1.0s], và việc ép bản thân phải không tì vết chỉ đang bóp nghẹt chính tâm hồn bạn.",
+      "audioEffect": "BGM tiếng đàn Cello và Piano bắt đầu vang lên sâu lắng, âm lượng 15%."
+    },
+    {
+      "section": "CÔNG CỤ THỰC HÀNH (25 - 55s)",
+      "tagline": "(Quy tắc hành động cụ thể)",
+      "textTo": "Quy tắc 2 bước: Đủ tốt & Vết nứt Kintsugi",
+      "visual": "Người trẻ gấp máy tính lại, hít thở sâu, bước ra ban công ngắm nhìn những chiếc lá cây đung đưa mộc mạc trong gió sớm. (Stock: closing laptop taking deep breath balcony morning wind slow motion vertical)",
+      "voiceover": "[hắng giọng] Lần tới khi áp lực hoàn hảo bủa vây, hãy thực hành đúng hai bước này: [nghỉ 0.8s] Bước một: Chọn 'đủ tốt' thay vì 'hoàn hảo'. Hãy hoàn thành việc đó ở mức tám mươi phần trăm [nghỉ 0.8s], rồi can đảm bấm nút gửi đi. [lấy hơi] Bước hai: Coi sai sót là những vết nứt vàng Kintsugi, hãy tự hỏi điều này giúp mình thấu hiểu bản thân hơn ra sao [nghỉ 1.2s], thay vì ngồi dằn vặt chính mình.",
+      "audioEffect": "Tiếng chuông xoay Tây Tạng ngân vang thanh thoát, giai điệu piano chuyển dần sang tông sáng nhẹ nhõm."
+    },
+    {
+      "section": "LẮNG ĐỌNG & DƯ ÂM (55 - 70s)",
+      "tagline": "(Đúc kết chạm cảm xúc)",
+      "textTo": "Bạn không cần hoàn hảo để được yêu thương.",
+      "visual": "Góc quay cận giọt sương đọng trên chiếc lá khuyết tật tự nhiên, ánh nắng ban mai rọi qua lấp lánh như ngọc. (Stock: dewdrop on imperfect green leaf morning sun flare slow motion vertical)",
+      "voiceover": "Một cái cây đẹp không phải vì nó thẳng tắp, mà vì những vết sẹo kiên cường sau bão giông. [cười] Bạn không cần phải hoàn hảo [nghỉ 0.8s], mới xứng đáng được yêu thương và tôn trọng. [nghỉ 1.0s] Hôm nay, bạn đã sẵn sàng dịu dàng với chính mình chưa?",
+      "audioEffect": "Tiếng chuông gió mỏng manh hòa cùng tiếng sáo thiền êm dịu tan dần ở những giây cuối."
+    }
+  ],
+  "script": [
+    "Bạn có bao giờ ngồi trước màn hình [thở dài], gõ đi xóa lại một dòng tin nhắn suốt nửa tiếng [nghỉ 1.0s], chỉ vì sợ người ta đánh giá mình ngớ ngẩn không?",
+    "Chủ nghĩa hoàn hảo không phải là tiêu chuẩn cao. [nghỉ 0.8s] Đó thực chất là chiếc khiên nặng nề [thở dài], bạn dựng lên để che giấu nỗi sợ bị từ chối. [lấy hơi] Triết lý Wabi Sabi nhắc chúng ta rằng: vạn vật vốn dĩ luôn khiếm khuyết [nghỉ 1.0s], và việc ép bản thân phải không tì vết chỉ đang bóp nghẹt chính tâm hồn bạn.",
+    "[hắng giọng] Lần tới khi áp lực hoàn hảo bủa vây, hãy thực hành đúng hai bước này: [nghỉ 0.8s] Bước một: Chọn 'đủ tốt' thay vì 'hoàn hảo'. Hãy hoàn thành việc đó ở mức tám mươi phần trăm [nghỉ 0.8s], rồi can đảm bấm nút gửi đi. [lấy hơi] Bước hai: Coi sai sót là những vết nứt vàng Kintsugi, hãy tự hỏi điều này giúp mình thấu hiểu bản thân hơn ra sao [nghỉ 1.2s], thay vì ngồi dằn vặt chính mình.",
+    "Một cái cây đẹp không phải vì nó thẳng tắp, mà vì những vết sẹo kiên cường sau bão giông. [cười] Bạn không cần phải hoàn hảo [nghỉ 0.8s], mới xứng đáng được yêu thương và tôn trọng. [nghỉ 1.0s] Hôm nay, bạn đã sẵn sàng dịu dàng với chính mình chưa?"
+  ],
+  "stockVideos": [],
+  "stockDir": "",
+  "bgmPath": "",
+  "bgmVolume": 0.12,
+  "subtitles": {
+    "fontName": "Montserrat",
+    "fontSize": 72,
+    "baseColor": "#FFF8E7",
+    "highlightColor": "#FFD200",
+    "outlineColor": "#000000",
+    "outlineWidth": 6,
+    "position": "center",
+    "wordsPerChunk": 4,
+    "animation": "smooth"
+  }
+}

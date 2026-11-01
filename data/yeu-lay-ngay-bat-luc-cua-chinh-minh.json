@@ -1,0 +1,66 @@
+{
+  "slug": "yeu-lay-ngay-bat-luc-cua-chinh-minh",
+  "title": "Yêu Lấy Ngày Bất Lực Của Chính Mình",
+  "provider": "vieneu",
+  "voice": "Hải Đăng",
+  "speed": 1,
+  "reuseVoice": true,
+  "sections": [
+    {
+      "section": "HOOK THỰC TẾ (0 - 8s)",
+      "tagline": "(Đánh thức trải nghiệm đời thực)",
+      "textTo": "Có những ngày... bạn chẳng muốn làm gì cả.",
+      "visual": "Cận cảnh một người ngồi thẫn thờ bên mép giường trong căn phòng mờ tối, ánh sáng rèm le lói, chiếc điện thoại úp mặt xuống sàn. (Stock: tired person sitting on bed edge morning gloomy room vertical cinematic)",
+      "voiceover": "Có những ngày bạn thức dậy, nhìn danh sách việc cần làm rồi chỉ thấy bất lực đến mức muốn buông xuôi tất cả?",
+      "audioEffect": "Tiếng thở dài trầm nhẹ hòa cùng tiếng tích tắc đồng hồ mờ đục trong không gian tĩnh lặng."
+    },
+    {
+      "section": "GIẢI MÃ TÂM LÝ (8 - 25s)",
+      "tagline": "(Bẻ gãy lầm tưởng)",
+      "textTo": "Mảnh đất màu mỡ cũng cần mùa đông để nghỉ ngơi.",
+      "visual": "Cây cổ thụ rụng lá trơ trụi giữa trời sương mù lạnh giá, chuyển cảnh chậm sang mặt nước gợn sóng phản chiếu bầu trời. (Stock: bare tree in winter fog slow motion moody nature vertical)",
+      "voiceover": "Chúng ta bị ám ảnh bởi việc phải luôn tích cực và tiến lên mỗi ngày. Để rồi mỗi khi kiệt sức, bạn lập tức tự dằn vặt rằng bản thân thật vô dụng. Nhưng sự thật là: ngay cả mảnh đất màu mỡ nhất cũng cần mùa đông để ngủ yên, chứ không ai có thể đơm hoa kết trái suốt bốn mùa.",
+      "audioEffect": "BGM tiếng piano trầm ấm cất lên da diết, âm lượng 20%, tạo cảm giác an ủi vỗ về."
+    },
+    {
+      "section": "CÔNG CỤ THỰC HÀNH (25 - 55s)",
+      "tagline": "(Quy tắc hành động cụ thể)",
+      "textTo": "Quy tắc 2 bước cho ngày kiệt sức",
+      "visual": "Bàn tay nâng niu một tách trà nóng bốc khói mỏng, sau đó là cảnh một người tựa đầu vào cửa kính ngắm mưa rơi. (Stock: hands holding warm mug looking at rain slow motion zen aesthetic vertical)",
+      "voiceover": "Lần tới khi cảm giác bất lực ập đến, hãy áp dụng đúng hai bước này: Bước một: Cho phép bản thân được điểm không mà không phán xét. Hãy tự nhủ: 'Hôm nay mình mệt, và việc thở được qua ngày này đã là một nỗ lực lớn.' Bước hai: Thu nhỏ thế giới lại bằng một hành động chăm sóc tối thiểu. Uống một ly nước ấm, rửa sạch mặt, hoặc chỉ cần nằm yên nhắm mắt trong mười phút mà không chạm vào điện thoại.",
+      "audioEffect": "Tiếng chuông xoay Tây Tạng ngân vang nhẹ, hòa cùng tiếng mưa rả rích bên ngoài cửa sổ."
+    },
+    {
+      "section": "LẮNG ĐỌNG & DƯ ÂM (55 - 70s)",
+      "tagline": "(Đúc kết chạm cảm xúc)",
+      "textTo": "Yêu bản thân... cả lúc vụn vỡ nhất.",
+      "visual": "Góc quay cận cảnh ánh nắng chiều ấm áp chiếu qua rèm cửa, một cái thở phào nhẹ nhõm với nụ cười bình yên. (Stock: warm sunset light inside room peaceful gentle smile vertical 4k)",
+      "voiceover": "Yêu lấy mình khi tỏa sáng thì rất dễ. Nhưng ôm lấy chính mình trong những ngày yếu đuối và vụn vỡ , đó mới là sự tử tế trọn vẹn nhất. Đừng tự trách nữa... hôm nay bạn đã vất vả nhiều rồi.",
+      "audioEffect": "Nốt piano cuối ngân dài tĩnh tại, tiếng gió thoảng nhẹ dần tắt mang lại cảm giác bình yên tuyệt đối."
+    }
+  ],
+  "script": [
+    "Có những ngày bạn thức dậy, nhìn danh sách việc cần làm rồi chỉ thấy bất lực đến mức muốn buông xuôi tất cả?",
+    "Chúng ta bị ám ảnh bởi việc phải luôn tích cực và tiến lên mỗi ngày. Để rồi mỗi khi kiệt sức, bạn lập tức tự dằn vặt rằng bản thân thật vô dụng. Nhưng sự thật là: ngay cả mảnh đất màu mỡ nhất cũng cần mùa đông để ngủ yên, chứ không ai có thể đơm hoa kết trái suốt bốn mùa.",
+    "Lần tới khi cảm giác bất lực ập đến, hãy áp dụng đúng hai bước này: Bước một: Cho phép bản thân được điểm không mà không phán xét. Hãy tự nhủ: 'Hôm nay mình mệt, và việc thở được qua ngày này đã là một nỗ lực lớn.' Bước hai: Thu nhỏ thế giới lại bằng một hành động chăm sóc tối thiểu. Uống một ly nước ấm, rửa sạch mặt, hoặc chỉ cần nằm yên nhắm mắt trong mười phút mà không chạm vào điện thoại.",
+    "Yêu lấy mình khi tỏa sáng thì rất dễ. Nhưng ôm lấy chính mình trong những ngày yếu đuối và vụn vỡ , đó mới là sự tử tế trọn vẹn nhất. Đừng tự trách nữa... hôm nay bạn đã vất vả nhiều rồi."
+  ],
+  "stockVideos": [
+    "F:\\Tool\\auto-compare-video\\data\\stock-uploads\\voice-1793517331210.mp3",
+    "F:\\Tool\\auto-compare-video\\data\\stock-uploads\\voice-1793517322492.mp3"
+  ],
+  "stockDir": "",
+  "bgmPath": "",
+  "bgmVolume": 0.12,
+  "subtitles": {
+    "fontName": "Montserrat",
+    "fontSize": 72,
+    "baseColor": "#FFF8E7",
+    "highlightColor": "#FFD200",
+    "outlineColor": "#000000",
+    "outlineWidth": 6,
+    "position": "center",
+    "wordsPerChunk": 4,
+    "animation": "smooth"
+  }
+}

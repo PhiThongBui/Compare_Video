@@ -5,6 +5,8 @@
   "private": true,
   "scripts": {
     "make": "node make-video.mjs",
+    "podcast": "node make-podcast.mjs",
+    "broll": "node make-broll-video.mjs",
     "dashboard": "npm run dev --prefix dashboard"
   },
   "dependencies": {

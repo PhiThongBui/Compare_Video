@@ -1,0 +1,62 @@
+{
+  "slug": "buong-bo-san-han-tra-lai-binh-yen-cho-chinh-ban",
+  "title": "Buông Bỏ Sân Hận: Trả Lại Bình Yên Cho Chính Bạn",
+  "provider": "vieneu",
+  "voice": "Hải Đăng",
+  "speed": 1,
+  "sections": [
+    {
+      "section": "HOOK THỰC TẾ (0 - 8s)",
+      "tagline": "(Đánh thức trải nghiệm đời thực)",
+      "textTo": "Ấm ức vì bị đối xử tệ hại?",
+      "visual": "Cận cảnh một người ngồi trong góc tối, tay siết chặt ly nước, ánh mắt đăm chiêu giận dữ. (Stock: angry man sitting alone dark room close up vertical cinematic)",
+      "voiceover": "Đã bao giờ bạn ôm mối hận với một ai đó [nghỉ 0.8s] đến mức mỗi lần nhớ lại, tim vẫn đập nhanh [thở dài] và ngực đau nhói chưa? [nghỉ 1.0s]",
+      "audioEffect": "Tiếng nhịp tim đập dồn dập nhẹ ở đầu, sau đó là tiếng thở dài trầm ngâm."
+    },
+    {
+      "section": "GIẢI MÃ TÂM LÝ (8 - 25s)",
+      "tagline": "(Bẻ gãy lầm tưởng)",
+      "textTo": "Uống độc dược... nhưng mong người khác chết.",
+      "visual": "Cảnh than hồng đang cháy đỏ rực trong lòng bàn tay siết lại, khói bốc lên dữ dội. (Stock: holding burning coal hot embers slow motion dramatic)",
+      "voiceover": "Chúng ta thường tin rằng: giữ sự tức giận là cách để trả thù người đã làm tổn thương mình. [nghỉ 0.8s] Nhưng sự thật trần trụi là: hận thù giống như việc bạn tự uống độc dược [thở dài] rồi ngồi chờ kẻ thù của mình đổ bệnh. [nghỉ 1.0s] Bạn trả thù bằng sự uất ức, chỉ khiến tâm trí mình cháy rụi trước mà thôi. [nghỉ 1.2s]",
+      "audioEffect": "BGM tiếng piano trầm buồn sâu lắng cất lên, tiếng xèo xèo nhỏ của tàn lửa."
+    },
+    {
+      "section": "CÔNG CỤ THỰC HÀNH (25 - 55s)",
+      "tagline": "(Quy tắc hành động cụ thể)",
+      "textTo": "Quy tắc 2 bước bóc tách sân hận",
+      "visual": "Cảnh một người đứng trước biển dâng sóng dữ, hít thở sâu rồi thở ra nhẹ nhàng, sóng biển dần êm dịu. (Stock: deep breath ocean waves meditation peaceful sunset vertical)",
+      "voiceover": "[hắng giọng] Để dập tắt cơn sân hận ngay hôm nay, hãy áp dụng Quy tắc 2 bước bóc tách: [nghỉ 0.8s] Bước một: Khi sự giận dữ bùng lên, hãy nói thầm: 'Tôi ghi nhận ngọn lửa này, nhưng tôi không phải là ngọn lửa.' Hít sâu 3 giây để làm nguội não bộ. [nghỉ 0.8s] Bước hai: Chuyển hướng sự chú ý. Đừng cố tranh luận đúng sai với kẻ xúc phạm mình, [nghỉ 0.8s] hãy tự hỏi: 'Hành động của họ phản ánh vết thương của họ, tại sao tôi phải trả giá bằng bình yên của mình?' [nghỉ 1.2s]",
+      "audioEffect": "Tiếng chuông xoay Tây Tạng ngân vang thanh tịnh, tiếng sóng biển rì rầm êm dịu."
+    },
+    {
+      "section": "LẮNG ĐỌNG & DƯ ÂM (55 - 70s)",
+      "tagline": "(Đúc kết chạm cảm xúc)",
+      "textTo": "Lấy thấu hiểu... hòa giải thù hận.",
+      "visual": "Giọt nước rơi xuống mặt nước tạo gợn sóng lan tỏa mịn màng, khung cảnh rừng trúc bình yên tràn ngập ánh nắng. (Stock: water drop ripples bamboo forest sunlight peaceful vertical)",
+      "voiceover": "Thù hận chưa bao giờ dập tắt được thù hận, [nghỉ 0.8s] chỉ có sự thấu hiểu mới làm tan biến được nó. [cười] Buông bỏ... không phải là tha cho họ, [nghỉ 0.8s] mà là tự cởi trói cho chính mình. [nghỉ 1.0s] Hôm nay, bạn đã sẵn sàng mỉm cười buông tay chưa?",
+      "audioEffect": "Tiếng chuông ngân dài hòa cùng tiếng gió thoảng qua rừng trúc dịu nhẹ rồi nhỏ dần."
+    }
+  ],
+  "script": [
+    "Đã bao giờ bạn ôm mối hận với một ai đó [nghỉ 0.8s] đến mức mỗi lần nhớ lại, tim vẫn đập nhanh [thở dài] và ngực đau nhói chưa? [nghỉ 1.0s]",
+    "Chúng ta thường tin rằng: giữ sự tức giận là cách để trả thù người đã làm tổn thương mình. [nghỉ 0.8s] Nhưng sự thật trần trụi là: hận thù giống như việc bạn tự uống độc dược [thở dài] rồi ngồi chờ kẻ thù của mình đổ bệnh. [nghỉ 1.0s] Bạn trả thù bằng sự uất ức, chỉ khiến tâm trí mình cháy rụi trước mà thôi. [nghỉ 1.2s]",
+    "[hắng giọng] Để dập tắt cơn sân hận ngay hôm nay, hãy áp dụng Quy tắc 2 bước bóc tách: [nghỉ 0.8s] Bước một: Khi sự giận dữ bùng lên, hãy nói thầm: 'Tôi ghi nhận ngọn lửa này, nhưng tôi không phải là ngọn lửa.' Hít sâu 3 giây để làm nguội não bộ. [nghỉ 0.8s] Bước hai: Chuyển hướng sự chú ý. Đừng cố tranh luận đúng sai với kẻ xúc phạm mình, [nghỉ 0.8s] hãy tự hỏi: 'Hành động của họ phản ánh vết thương của họ, tại sao tôi phải trả giá bằng bình yên của mình?' [nghỉ 1.2s]",
+    "Thù hận chưa bao giờ dập tắt được thù hận, [nghỉ 0.8s] chỉ có sự thấu hiểu mới làm tan biến được nó. [cười] Buông bỏ... không phải là tha cho họ, [nghỉ 0.8s] mà là tự cởi trói cho chính mình. [nghỉ 1.0s] Hôm nay, bạn đã sẵn sàng mỉm cười buông tay chưa?"
+  ],
+  "stockVideos": [],
+  "stockDir": "",
+  "bgmPath": "",
+  "bgmVolume": 0.12,
+  "subtitles": {
+    "fontName": "Montserrat",
+    "fontSize": 72,
+    "baseColor": "#FFF8E7",
+    "highlightColor": "#FFD200",
+    "outlineColor": "#000000",
+    "outlineWidth": 6,
+    "position": "center",
+    "wordsPerChunk": 4,
+    "animation": "smooth"
+  }
+}

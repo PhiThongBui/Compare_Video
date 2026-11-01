@@ -71,6 +71,7 @@ export async function POST(req: NextRequest) {
       script,
       provider = "vieneu",
       voice = "Hải Đăng",
+      speed = 1.0,
       customSlug,
       title,
     } = body;
@@ -91,7 +92,7 @@ export async function POST(req: NextRequest) {
         if (typeof item === "string") {
           return item.replace(/<[^>]+>/g, "").replace(/\*\*/g, "").trim();
         }
-        return (item?.tts || item?.caption?.replace(/<[^>]+>/g, "") || "").replace(/\*\*/g, "").trim();
+        return (item?.tts || item?.voiceover || item?.caption?.replace(/<[^>]+>/g, "") || "").replace(/\*\*/g, "").trim();
       })
       .filter(Boolean);
 
@@ -106,8 +107,31 @@ export async function POST(req: NextRequest) {
     const PREVIEWS_DIR = path.join(ROOT_DIR, "output", "previews");
     fs.mkdirSync(PREVIEWS_DIR, { recursive: true });
 
+/**
+ * Tự động chuẩn hóa vị trí thẻ cảm xúc ([cười], [thở dài], [hắng giọng], [lấy hơi])
+ * để VieNeu-TTS / CIT Voice Studio luôn phát âm 100% không bao giờ bị nuốt/bỏ qua âm:
+ * Nếu tag cảm xúc đứng ở cuối câu sau dấu chấm/hỏi (vd: "đau nhói chưa? [thở dài] [nghỉ 1s]"):
+ * Chuyển tag vào trước dấu kết thúc câu ("đau nhói chưa [thở dài]? [nghỉ 1s]").
+ */
+function normalizeEmotionTags(text: string): string {
+  if (!text) return "";
+  let s = text;
+  // 1. Tag cảm xúc đứng sau dấu câu và trước khoảng nghỉ hoặc kết thúc
+  s = s.replace(
+    /([a-zA-Z0-9À-ỹ]+)\s*([.,?!])\s*(\[(?:cười|thở dài|hắng giọng|lấy hơi)\])(\s*(?:\[nghỉ[^\]]*\]|$))/gu,
+    (_match, word, punct, tag, trailing) => `${word} ${tag}${punct}${trailing}`
+  );
+  // 2. Tag cảm xúc đứng trơ trọi ở cuối chuỗi
+  s = s.replace(
+    /\b([a-zA-Z0-9À-ỹ]+)\s+(\[(?:cười|thở dài|hắng giọng|lấy hơi)\])$/gu,
+    (_match, word, tag) => `${tag} ${word}`
+  );
+  return s;
+}
+
     // Ghép các câu lại với dấu ngắt quãng hợp lý để TTS đọc liền mạch
-    const fullSpeechText = linesText.join(" ... ");
+    const rawSpeechText = linesText.join(" ... ");
+    const fullSpeechText = normalizeEmotionTags(rawSpeechText);
 
     const slug = customSlug || (title ? title.toLowerCase().replace(/[^a-z0-9]+/g, "-") : `preview-${Date.now()}`);
     const filename = `preview-${slug}.mp3`;
@@ -132,11 +156,11 @@ export async function POST(req: NextRequest) {
           body: JSON.stringify({
             text: fullSpeechText,
             voice_id: voice || "Hải Đăng",
-            speed: 1.0,
+            speed: Number(speed) || 1.0,
             format: "mp3",
             use_pronunciation_dict: true,
           }),
-          signal: AbortSignal.timeout(6000), // timeout 6s nếu server VieNeu chưa bật
+          signal: AbortSignal.timeout(30000), // Timeout 30s đủ cho model VieNeu xử lý trên CPU
         });
 
         if (res.ok) {
@@ -156,7 +180,16 @@ export async function POST(req: NextRequest) {
       const edgeVoice = mapToEdgeVoice(voice);
       const tts = new MsEdgeTTS();
       await tts.setMetadata(edgeVoice, OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3);
-      const { audioStream } = tts.toStream(fullSpeechText, { rate: "+10%" });
+
+      // Edge TTS không hiểu thẻ [cười], [thở dài], [hắng giọng], [lấy hơi] -> lọc bỏ thẻ để tránh đọc thành tiếng
+      const edgeCleanText = fullSpeechText
+        .replace(/\[(?:nghỉ|pause)[^\]]*\]/gi, "... ")
+        .replace(/\[(?:cười|hắng giọng|thở dài|lấy hơi)[^\]]*\]/gi, "");
+
+      const rateOffset = Math.round(((Number(speed) || 1.0) - 1.0) * 100);
+      const rateStr = `${rateOffset >= 0 ? "+" : ""}${rateOffset}%`;
+
+      const { audioStream } = tts.toStream(edgeCleanText, { rate: rateStr });
 
       const chunks: Buffer[] = [];
       await new Promise<void>((resolve, reject) => {

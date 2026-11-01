@@ -21,6 +21,8 @@ import {
   Zap,
   Search,
   HardDrive,
+  Loader2,
+  FolderOpen,
   X,
   ArrowLeft,
   Eye,
@@ -29,6 +31,8 @@ import {
   RotateCcw,
   Volume2,
   VolumeX,
+  Scissors,
+  Sliders,
 } from "lucide-react";
 import CreateVideoDropdown from "@/components/CreateVideoDropdown";
 
@@ -51,17 +55,42 @@ interface TemplateItem {
   filename: string;
   slug: string;
   title: string;
+  type?: "broll" | "compare" | "podcast" | "general";
+  itemsCount?: number;
+  sizeBytes?: number;
+  sizeFormatted?: string;
+  updatedAt?: number;
+  createdDate?: string;
   data: {
-    slug: string;
+    slug?: string;
     category?: string;
     channel?: string;
     provider?: string;
     voice?: string;
-    title: string;
-    left: { name: string; icon: string };
-    right: { name: string; icon: string };
-    script: Array<{ tts?: string; caption?: string } | string>;
+    title?: string;
+    left?: { name: string; icon: string };
+    right?: { name: string; icon: string };
+    script?: Array<{ tts?: string; caption?: string; speaker?: string } | string>;
+    sections?: any[];
   };
+}
+
+interface UploadStockFile {
+  name: string;
+  displayName: string;
+  path: string;
+  sizeBytes: number;
+  sizeFormatted: string;
+  createdAt: number;
+  createdDate: string;
+  previewUrl: string;
+}
+
+interface UploadStorageInfo {
+  count: number;
+  totalFormatted: string;
+  totalBytes: number;
+  files: UploadStockFile[];
 }
 
 const STORAGE_KEY = "pssc_video_form_draft_v2";
@@ -252,6 +281,30 @@ export default function DashboardPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [templates, setTemplates] = useState<TemplateItem[]>([]);
 
+  // Thống kê & Dọn dẹp thư mục data/stock-uploads & data/*.json
+  const [uploadStorage, setUploadStorage] = useState<UploadStorageInfo | null>(null);
+  const [isCleaningUploads, setIsCleaningUploads] = useState(false);
+  const [isStockManagerOpen, setIsStockManagerOpen] = useState(false);
+  const [storageManagerTab, setStorageManagerTab] = useState<"stock" | "templates">("stock");
+  const [selectedStockFilesToDelete, setSelectedStockFilesToDelete] = useState<string[]>([]);
+  const [deletingStockFilename, setDeletingStockFilename] = useState<string | null>(null);
+
+  // Quản lý xóa file kịch bản JSON
+  const [selectedTemplatesToDelete, setSelectedTemplatesToDelete] = useState<string[]>([]);
+  const [isDeletingTemplates, setIsDeletingTemplates] = useState(false);
+  const [deletingTemplateFilename, setDeletingTemplateFilename] = useState<string | null>(null);
+  const [templatesTotalBytes, setTemplatesTotalBytes] = useState<number>(0);
+  const [templatesTotalFormatted, setTemplatesTotalFormatted] = useState<string>("0 KB");
+
+  // Tổng dung lượng toàn bộ thư mục data/ (gồm cả video stock uploads và các file kịch bản JSON)
+  const totalDataBytes = (uploadStorage?.totalBytes || 0) + templatesTotalBytes;
+  const totalDataFormatted =
+    totalDataBytes === 0
+      ? "0.00 MB"
+      : totalDataBytes < 1024 * 1024
+        ? `${(totalDataBytes / 1024).toFixed(2)} KB`
+        : `${(totalDataBytes / 1024 / 1024).toFixed(2)} MB`;
+
   // 1. AUTO-SAVE: Load draft from localStorage on mount
   useEffect(() => {
     setIsMounted(true);
@@ -358,18 +411,179 @@ export default function DashboardPage() {
     }
   }, [selectedVideo]);
 
-  // Fetch templates
+  // Fetch templates & dung lượng các file JSON
   const fetchTemplates = useCallback(async () => {
     try {
       const res = await fetch("/api/data-templates");
       const data = await res.json();
       if (data.templates) {
         setTemplates(data.templates);
+        if (data.totalBytes !== undefined) {
+          setTemplatesTotalBytes(data.totalBytes);
+        }
+        if (data.totalFormatted) {
+          setTemplatesTotalFormatted(data.totalFormatted);
+        }
       }
     } catch (err) {
       console.error("Lỗi khi tải templates:", err);
     }
   }, []);
+
+  // Fetch dung lượng bộ nhớ data/stock-uploads
+  const fetchUploadStorage = useCallback(async () => {
+    try {
+      const res = await fetch("/api/upload-stock");
+      if (res.ok) {
+        const data = await res.json();
+        setUploadStorage({
+          count: data.count || 0,
+          totalFormatted: data.totalFormatted || "0 MB",
+          totalBytes: data.totalBytes || 0,
+          files: Array.isArray(data.files) ? data.files : [],
+        });
+      }
+    } catch { }
+  }, []);
+
+  // Xóa 1 file stock cụ thể (chọn từng cái 1 để xóa)
+  const handleDeleteSingleStock = async (filename: string) => {
+    try {
+      setDeletingStockFilename(filename);
+      const res = await fetch(`/api/upload-stock?filename=${encodeURIComponent(filename)}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Lỗi xóa file");
+
+      await fetchUploadStorage();
+      setSelectedStockFilesToDelete((prev) => prev.filter((f) => f !== filename));
+    } catch (err: unknown) {
+      const error = err as Error;
+      alert(`Lỗi: ${error.message}`);
+    } finally {
+      setDeletingStockFilename(null);
+    }
+  };
+
+  // Xóa các file stock đã tick chọn (chọn nhiều cái 1 lúc)
+  const handleDeleteSelectedStock = async () => {
+    if (selectedStockFilesToDelete.length === 0) return;
+    if (
+      !confirm(
+        `Bạn có chắc muốn xóa ${selectedStockFilesToDelete.length} file stock đã chọn không?`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setIsCleaningUploads(true);
+      const res = await fetch("/api/upload-stock", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ filenames: selectedStockFilesToDelete }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Lỗi xóa files");
+
+      await fetchUploadStorage();
+      setSelectedStockFilesToDelete([]);
+    } catch (err: unknown) {
+      const error = err as Error;
+      alert(`Lỗi: ${error.message}`);
+    } finally {
+      setIsCleaningUploads(false);
+    }
+  };
+
+  // Xóa toàn bộ file trong data/stock-uploads
+  const handleCleanAllUploads = async () => {
+    if (!uploadStorage || uploadStorage.count === 0) return;
+    if (
+      !confirm(
+        `Bạn có chắc muốn xóa sạch toàn bộ ${uploadStorage.count} file (${uploadStorage.totalFormatted}) trong thư mục data/stock-uploads không?`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setIsCleaningUploads(true);
+      const res = await fetch("/api/upload-stock?all=1", { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Lỗi dọn dẹp thư mục");
+
+      await fetchUploadStorage();
+      setSelectedStockFilesToDelete([]);
+      setIsStockManagerOpen(false);
+      alert(data.message || "Đã dọn dẹp sạch sẽ bộ nhớ tạm!");
+    } catch (err: unknown) {
+      const error = err as Error;
+      alert(`Lỗi: ${error.message}`);
+    } finally {
+      setIsCleaningUploads(false);
+    }
+  };
+
+  // Xóa 1 file kịch bản JSON (data/*.json)
+  const handleDeleteSingleTemplate = async (filename: string, title?: string) => {
+    if (
+      !confirm(
+        `Bạn có chắc muốn xóa file kịch bản "${title || filename}" (${filename}) không? Hành động này không thể hoàn tác.`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setDeletingTemplateFilename(filename);
+      const res = await fetch(`/api/data-templates?filename=${encodeURIComponent(filename)}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Lỗi xóa file kịch bản");
+
+      await fetchTemplates();
+      setSelectedTemplatesToDelete((prev) => prev.filter((f) => f !== filename));
+    } catch (err: unknown) {
+      const error = err as Error;
+      alert(`Lỗi: ${error.message}`);
+    } finally {
+      setDeletingTemplateFilename(null);
+    }
+  };
+
+  // Xóa các file kịch bản JSON đã tick chọn
+  const handleDeleteSelectedTemplates = async () => {
+    if (selectedTemplatesToDelete.length === 0) return;
+    if (
+      !confirm(
+        `Bạn có chắc muốn xóa vĩnh viễn ${selectedTemplatesToDelete.length} file kịch bản JSON đã chọn khỏi thư mục data/ không?`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setIsDeletingTemplates(true);
+      const res = await fetch("/api/data-templates", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ filenames: selectedTemplatesToDelete }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Lỗi xóa file kịch bản");
+
+      await fetchTemplates();
+      setSelectedTemplatesToDelete([]);
+    } catch (err: unknown) {
+      const error = err as Error;
+      alert(`Lỗi: ${error.message}`);
+    } finally {
+      setIsDeletingTemplates(false);
+    }
+  };
 
   // Xóa video MP4
   const handleDeleteVideo = async (video: VideoItem) => {
@@ -390,7 +604,7 @@ export default function DashboardPage() {
               v.removeAttribute("src");
               v.load();
             }
-          } catch {}
+          } catch { }
         });
       }
 
@@ -416,7 +630,8 @@ export default function DashboardPage() {
   useEffect(() => {
     fetchVideos();
     fetchTemplates();
-  }, [fetchVideos, fetchTemplates]);
+    fetchUploadStorage();
+  }, [fetchVideos, fetchTemplates, fetchUploadStorage]);
 
   // Handle Load Template into Studio
   const handleLoadTemplate = (tpl: TemplateItem, autoSwitch = true) => {
@@ -598,7 +813,7 @@ export default function DashboardPage() {
           v.pause();
           v.removeAttribute("src");
           v.load();
-        } catch {}
+        } catch { }
       });
     }
 
@@ -737,11 +952,10 @@ export default function DashboardPage() {
           <nav className="hidden md:flex items-center bg-[#05130E] p-1 rounded-xl border border-[#EBF8F2]/15 space-x-1">
             <button
               onClick={() => setCurrentView("gallery")}
-              className={`flex items-center space-x-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                currentView === "gallery"
-                  ? "bg-[#143D2E] text-[#FFD200] shadow border border-[#FFD200]/30"
-                  : "text-[#EBF8F2]/70 hover:text-white hover:bg-white/5"
-              }`}
+              className={`flex items-center space-x-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${currentView === "gallery"
+                ? "bg-[#143D2E] text-[#FFD200] shadow border border-[#FFD200]/30"
+                : "text-[#EBF8F2]/70 hover:text-white hover:bg-white/5"
+                }`}
             >
               <Film className="w-3.5 h-3.5" />
               <span>Thư viện</span>
@@ -749,6 +963,27 @@ export default function DashboardPage() {
                 {videos.length}
               </span>
             </button>
+
+            <Link
+              href="/studio"
+              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-[#10B981]/20 to-[#FFD200]/20 hover:from-[#10B981]/30 hover:to-[#FFD200]/30 text-xs font-black text-white hover:text-[#FFD200] border border-[#10B981]/30 transition-all shadow-xs"
+              title="Mở Studio Timeline Pro (CapCut Web style, Timeline đa track, phụ đề chạy từng từ)"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-[#FFD200]" />
+              <span>Studio Timeline</span>
+              <span className="bg-[#FFD200] text-[#081C15] text-[9px] font-black px-1.5 py-0.2 rounded font-mono shadow-xs">
+                PRO ⭐
+              </span>
+            </Link>
+
+            <Link
+              href="/edit"
+              className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-[#EBF8F2]/60 hover:text-white hover:bg-white/5 transition-all"
+              title="Trình chỉnh sửa cơ bản dạng Form"
+            >
+              <Scissors className="w-3.5 h-3.5 text-[#EBF8F2]/60" />
+              <span>Classic Editor</span>
+            </Link>
           </nav>
         </div>
 
@@ -757,7 +992,10 @@ export default function DashboardPage() {
           <CreateVideoDropdown />
 
           <button
-            onClick={fetchVideos}
+            onClick={() => {
+              fetchVideos();
+              fetchUploadStorage();
+            }}
             disabled={isLoadingVideos}
             className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-[#0E291E] hover:bg-[#143D2E] border border-[#EBF8F2]/20 text-xs font-semibold transition"
             title="Tải lại danh sách"
@@ -771,8 +1009,8 @@ export default function DashboardPage() {
       {/* ================= VIEW 1: GALLERY / LIST TRANG CHỦ ================= */}
       {currentView === "gallery" && (
         <main className="flex-1 max-w-[1720px] w-full mx-auto p-6 space-y-6">
-          {/* Top Banner Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Top Banner Stats: 4 Cột - Đặt thẻ Stock Upload Tạm cạnh thẻ Tổng Dung Lượng MP4 */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="p-5 rounded-2xl bg-gradient-to-br from-[#0E291E] to-[#081C15] border border-[#EBF8F2]/15 shadow-xl flex items-center justify-between">
               <div>
                 <p className="text-xs uppercase font-bold text-[#EBF8F2]/60 tracking-wider">
@@ -799,15 +1037,66 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            <div className="p-5 rounded-2xl bg-gradient-to-br from-[#0E291E] to-[#081C15] border border-[#EBF8F2]/15 shadow-xl flex items-center justify-between">
+            {/* THẺ DUNG LƯỢNG TOÀN BỘ DATA (GỒM CẢ VIDEO STOCK VÀ CÁC FILE JSON KỊCH BẢN) */}
+            <div
+              onClick={() => {
+                setStorageManagerTab("stock");
+                setIsStockManagerOpen(true);
+              }}
+              className="p-5 rounded-2xl bg-gradient-to-br from-[#0E291E] to-[#081C15] border border-[#10B981]/25 hover:border-[#FFD200] shadow-xl flex items-center justify-between cursor-pointer transition-all group hover:scale-[1.02]"
+              title="Bấm để xem danh sách và chọn từng file (stock video & json) để xóa"
+            >
               <div>
-                <p className="text-xs uppercase font-bold text-[#EBF8F2]/60 tracking-wider">
-                  Kịch Bản Mẫu Có Sẵn
+                <div className="flex items-center gap-1.5">
+                  <p className="text-xs uppercase font-bold text-[#EBF8F2]/60 tracking-wider">
+                    Bộ Nhớ Data & Stock
+                  </p>
+                  <span className="text-[9px] px-1.5 py-0.2 rounded bg-[#FFD200]/20 text-[#FFD200] font-bold">
+                    Quản lý
+                  </span>
+                </div>
+                <p className="text-3xl font-black text-[#FFD200] mt-1 font-mono">
+                  {totalDataFormatted}
                 </p>
-                <p className="text-3xl font-black text-[#10B981] mt-1">{templates.length}</p>
-                <p className="text-[11px] text-[#EBF8F2]/50 mt-0.5">Trong thư mục data/*.json</p>
+                <p className="text-[11px] text-[#10B981] mt-0.5 flex items-center gap-1">
+                  <span>{uploadStorage ? uploadStorage.count : 0} clip ({uploadStorage ? uploadStorage.totalFormatted : "0 MB"})</span>
+                  <span className="text-[#EBF8F2]/40">•</span>
+                  <span>{templates.length} JSON ({templatesTotalFormatted})</span>
+                </p>
               </div>
-              <div className="w-12 h-12 rounded-xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-purple-400">
+              <div className="w-12 h-12 rounded-xl bg-[#FFD200]/15 border border-[#FFD200]/30 flex items-center justify-center text-[#FFD200] group-hover:bg-[#FFD200] group-hover:text-[#081C15] transition-all">
+                <FolderOpen className="w-6 h-6" />
+              </div>
+            </div>
+
+            {/* THẺ KỊCH BẢN MẪU CÓ SẴN - BẤM VÀO ĐỂ QUẢN LÝ / XÓA TỪNG FILE JSON */}
+            <div
+              onClick={() => {
+                setStorageManagerTab("templates");
+                setIsStockManagerOpen(true);
+              }}
+              className="p-5 rounded-2xl bg-gradient-to-br from-[#0E291E] to-[#081C15] border border-purple-500/25 hover:border-purple-400 shadow-xl flex items-center justify-between cursor-pointer transition-all group hover:scale-[1.02]"
+              title="Bấm để xem danh sách và chọn từng kịch bản JSON để xóa hoặc nạp"
+            >
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <p className="text-xs uppercase font-bold text-[#EBF8F2]/60 tracking-wider">
+                    Kịch Bản Data JSON
+                  </p>
+                  <span className="text-[9px] px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-300 font-bold">
+                    Quản lý
+                  </span>
+                </div>
+                <p className="text-3xl font-black text-[#10B981] mt-1">{templates.length}</p>
+                <p className="text-[11px] text-purple-300 mt-0.5 flex items-center gap-1">
+                  <span>{templatesTotalFormatted}</span>
+                  <span className="text-[#EBF8F2]/40">•</span>
+                  <span className="text-[#EBF8F2]/50 underline group-hover:text-purple-300">
+                    Chọn xóa từng file →
+                  </span>
+                </p>
+              </div>
+              <div className="w-12 h-12 rounded-xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-purple-400 group-hover:bg-purple-500 group-hover:text-white transition-all">
                 <FileText className="w-6 h-6" />
               </div>
             </div>
@@ -855,8 +1144,14 @@ export default function DashboardPage() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
               {filteredVideos.map((vid) => {
+                const vidSlug = vid.filename.replace(/\.mp4$/i, "");
                 const correspondingTpl = templates.find(
-                  (t) => t.slug === vid.title || `${t.slug}.mp4` === vid.filename
+                  (t) =>
+                    t.slug === vid.title ||
+                    t.slug === vidSlug ||
+                    `${t.slug}.mp4` === vid.filename ||
+                    t.filename === `${vidSlug}.json` ||
+                    t.title === vid.title
                 );
 
                 return (
@@ -877,7 +1172,7 @@ export default function DashboardPage() {
                         onMouseEnter={(e) => {
                           const v = e.currentTarget;
                           v.currentTime = 3;
-                          v.play().catch(() => {});
+                          v.play().catch(() => { });
                         }}
                         onMouseLeave={(e) => {
                           const v = e.currentTarget;
@@ -936,11 +1231,39 @@ export default function DashboardPage() {
                           <span>Xem</span>
                         </button>
 
+                        <Link
+                          href={`/studio?video=${encodeURIComponent(vid.filename)}`}
+                          className="py-1.5 px-2.5 rounded-lg bg-[#143D2E] hover:bg-[#10B981]/30 text-xs font-bold text-[#FFD200] border border-[#FFD200]/40 hover:border-[#FFD200] transition flex items-center justify-center space-x-1"
+                          title="Mở trong Studio Timeline Pro (CapCut Style)"
+                        >
+                          <Sparkles className="w-3.5 h-3.5 text-[#FFD200]" />
+                          <span>Studio</span>
+                        </Link>
+
+                        <Link
+                          href={`/edit?video=${encodeURIComponent(vid.filename)}`}
+                          className="py-1.5 px-2 rounded-lg bg-[#0E291E] hover:bg-[#10B981]/25 text-xs font-semibold text-[#10B981] border border-[#10B981]/30 hover:border-[#10B981] transition flex items-center justify-center space-x-1"
+                          title="Chỉnh sửa dạng form cổ điển"
+                        >
+                          <Scissors className="w-3.5 h-3.5" />
+                        </Link>
+
                         {correspondingTpl && (
                           <Link
-                            href={`/create?template=${correspondingTpl.slug}`}
-                            className="py-1.5 px-2 rounded-lg bg-[#0E291E] hover:bg-[#FFD200]/20 text-xs font-semibold text-[#FFD200] border border-[#FFD200]/30 transition"
-                            title="Nạp vào Studio để sửa / clone"
+                            href={
+                              correspondingTpl.type === "broll" || Boolean(correspondingTpl.data?.sections)
+                                ? `/broll?template=${correspondingTpl.slug}`
+                                : correspondingTpl.type === "podcast"
+                                  ? `/podcast?template=${correspondingTpl.slug}`
+                                  : `/create?template=${correspondingTpl.slug}`
+                            }
+                            className="py-1.5 px-2 rounded-lg bg-[#0E291E] hover:bg-[#FFD200]/20 text-xs font-semibold text-[#FFD200] border border-[#FFD200]/30 transition flex items-center justify-center"
+                            title={`Nạp kịch bản vào ${correspondingTpl.type === "broll" || Boolean(correspondingTpl.data?.sections)
+                              ? "B-Roll Studio"
+                              : correspondingTpl.type === "podcast"
+                                ? "Podcast Studio"
+                                : "Studio So Sánh"
+                              } để sửa / clone`}
                           >
                             <Zap className="w-3.5 h-3.5" />
                           </Link>
@@ -1278,11 +1601,10 @@ export default function DashboardPage() {
                   return (
                     <div
                       key={idx}
-                      className={`p-3.5 rounded-xl border transition-all ${
-                        activeLineIdx === idx
-                          ? "bg-[#143D2E]/90 border-[#FFD200] shadow-md shadow-[#FFD200]/10"
-                          : "bg-[#081C15]/70 border-[#EBF8F2]/10 hover:border-[#EBF8F2]/30"
-                      }`}
+                      className={`p-3.5 rounded-xl border transition-all ${activeLineIdx === idx
+                        ? "bg-[#143D2E]/90 border-[#FFD200] shadow-md shadow-[#FFD200]/10"
+                        : "bg-[#081C15]/70 border-[#EBF8F2]/10 hover:border-[#EBF8F2]/30"
+                        }`}
                       onClick={() => setActiveLineIdx(idx)}
                     >
                       <div className="flex items-center justify-between mb-2">
@@ -1294,16 +1616,16 @@ export default function DashboardPage() {
                             {idx === 0
                               ? "Hook mở đầu (Gây tò mò)"
                               : idx === 1
-                              ? "Hook nối"
-                              : idx === 2
-                              ? "Giới thiệu VS"
-                              : idx >= 3 && idx <= 5
-                              ? `Đặc điểm ${conceptB || "B"}`
-                              : idx >= 6 && idx <= 8
-                              ? `Đặc điểm ${conceptA || "A"}`
-                              : idx >= 9 && idx <= 10
-                              ? "So sánh mâu thuẫn đối nghịch"
-                              : "Call to Action kết video"}
+                                ? "Hook nối"
+                                : idx === 2
+                                  ? "Giới thiệu VS"
+                                  : idx >= 3 && idx <= 5
+                                    ? `Đặc điểm ${conceptB || "B"}`
+                                    : idx >= 6 && idx <= 8
+                                      ? `Đặc điểm ${conceptA || "A"}`
+                                      : idx >= 9 && idx <= 10
+                                        ? "So sánh mâu thuẫn đối nghịch"
+                                        : "Call to Action kết video"}
                           </span>
                         </div>
 
@@ -1314,11 +1636,10 @@ export default function DashboardPage() {
                               e.stopPropagation();
                               setShowRawCodeMap((prev) => ({ ...prev, [idx]: !prev[idx] }));
                             }}
-                            className={`p-1 rounded text-xs transition ${
-                              isRaw
-                                ? "bg-[#FFD200] text-[#081C15] font-bold"
-                                : "text-[#EBF8F2]/40 hover:text-[#EBF8F2]"
-                            }`}
+                            className={`p-1 rounded text-xs transition ${isRaw
+                              ? "bg-[#FFD200] text-[#081C15] font-bold"
+                              : "text-[#EBF8F2]/40 hover:text-[#EBF8F2]"
+                              }`}
                             title={isRaw ? "Chuyển sang chế độ WYSIWYG" : "Xem/Sửa mã HTML gốc"}
                           >
                             <Code className="w-3.5 h-3.5" />
@@ -1470,11 +1791,10 @@ export default function DashboardPage() {
                     type="button"
                     disabled={isGenerating || isPreviewingAudio}
                     onClick={handlePreviewAudio}
-                    className={`sm:col-span-4 py-4 rounded-2xl font-bold text-xs uppercase tracking-wider border-2 transition-all shadow-lg flex items-center justify-center space-x-2 cursor-pointer ${
-                      isPlayingPreview
-                        ? "bg-[#FF334B]/20 border-[#FF334B] text-[#FF334B] hover:bg-[#FF334B]/30 animate-pulse"
-                        : "bg-[#0E291E] border-[#EBF8F2]/25 text-[#EBF8F2] hover:border-[#FFD200] hover:text-[#FFD200] active:scale-95"
-                    }`}
+                    className={`sm:col-span-4 py-4 rounded-2xl font-bold text-xs uppercase tracking-wider border-2 transition-all shadow-lg flex items-center justify-center space-x-2 cursor-pointer ${isPlayingPreview
+                      ? "bg-[#FF334B]/20 border-[#FF334B] text-[#FF334B] hover:bg-[#FF334B]/30 animate-pulse"
+                      : "bg-[#0E291E] border-[#EBF8F2]/25 text-[#EBF8F2] hover:border-[#FFD200] hover:text-[#FFD200] active:scale-95"
+                      }`}
                     title="Nghe thử giọng đọc AI cho toàn bộ kịch bản trong vài giây"
                   >
                     {isPreviewingAudio ? (
@@ -1754,6 +2074,455 @@ export default function DashboardPage() {
                   <Trash2 className="w-4 h-4" />
                 )}
                 <span>{deletingFilename === deleteConfirmVideo.filename ? "Đang xóa..." : "Xác nhận xóa"}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ================= MODAL QUẢN LÝ DỮ LIỆU & BỘ NHỚ LƯU TRỮ (TABS: STOCK UPLOADS & DATA JSON) ================= */}
+      {isStockManagerOpen && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#0E291E] border border-[#10B981]/30 rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-4 max-h-[90vh] flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-[#EBF8F2]/10 shrink-0">
+              <div className="flex items-center space-x-3">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${storageManagerTab === "stock"
+                  ? "bg-[#FFD200]/15 border border-[#FFD200]/30 text-[#FFD200]"
+                  : "bg-purple-500/15 border border-purple-500/30 text-purple-400"
+                  }`}>
+                  {storageManagerTab === "stock" ? (
+                    <FolderOpen className="w-5 h-5" />
+                  ) : (
+                    <FileText className="w-5 h-5" />
+                  )}
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-white flex items-center gap-2">
+                    <span>Quản Lý Dữ Liệu Lưu Trữ</span>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-[#10B981]/20 text-[#10B981] font-mono font-bold">
+                      Tổng: {totalDataFormatted}
+                    </span>
+                  </h3>
+                  <p className="text-xs text-[#EBF8F2]/60">
+                    {storageManagerTab === "stock" ? (
+                      <>
+                        Thư mục <code className="text-[#10B981] font-mono">data/stock-uploads/</code> ({uploadStorage?.totalFormatted || "0.00 MB"}) lưu tạm các clip bạn đã tải lên từ máy tính.
+                      </>
+                    ) : (
+                      <>
+                        Thư mục <code className="text-purple-300 font-mono">data/*.json</code> ({templatesTotalFormatted}) lưu các mẫu kịch bản đã tạo hoặc chỉnh sửa.
+                      </>
+                    )}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsStockManagerOpen(false)}
+                className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 text-[#EBF8F2]/60 hover:text-white flex items-center justify-center transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* TAB SELECTOR: CHIA MỤC QUẢN LÝ (STOCK UPLOAD vs DATA JSON) */}
+            <div className="flex items-center gap-2 bg-[#081C15] p-1.5 rounded-xl border border-[#EBF8F2]/10 shrink-0">
+              <button
+                type="button"
+                onClick={() => setStorageManagerTab("stock")}
+                className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${storageManagerTab === "stock"
+                  ? "bg-[#FFD200] text-[#081C15] shadow-md shadow-[#FFD200]/20"
+                  : "text-[#EBF8F2]/60 hover:text-white hover:bg-white/5"
+                  }`}
+              >
+                <FolderOpen className="w-4 h-4 shrink-0" />
+                <span>1. Video Stock Upload </span>
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${storageManagerTab === "stock" ? "bg-[#081C15]/20 text-[#081C15]" : "bg-white/10 text-[#EBF8F2]/60"
+                  }`}>
+                  {uploadStorage?.count || 0} clip ({uploadStorage?.totalFormatted || "0 MB"})
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setStorageManagerTab("templates")}
+                className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${storageManagerTab === "templates"
+                  ? "bg-purple-500 text-white shadow-md shadow-purple-500/20"
+                  : "text-[#EBF8F2]/60 hover:text-white hover:bg-white/5"
+                  }`}
+              >
+                <FileText className="w-4 h-4 shrink-0" />
+                <span>2. Kịch Bản Data </span>
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${storageManagerTab === "templates" ? "bg-black/20 text-white" : "bg-white/10 text-[#EBF8F2]/60"
+                  }`}>
+                  {templates.length} file ({templatesTotalFormatted})
+                </span>
+              </button>
+            </div>
+
+            {/* ================= PHÂN MỤC 1: QUẢN LÝ VIDEO STOCK UPLOADS ================= */}
+            {storageManagerTab === "stock" && (
+              <>
+                {/* Note & Action toolbar */}
+                <div className="bg-[#081C15] border border-[#EBF8F2]/10 rounded-xl p-3 shrink-0 flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-3">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-[#EBF8F2] cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={
+                          Boolean(
+                            uploadStorage &&
+                            uploadStorage.files.length > 0 &&
+                            selectedStockFilesToDelete.length === uploadStorage.files.length
+                          )
+                        }
+                        onChange={() => {
+                          if (!uploadStorage || !uploadStorage.files) return;
+                          if (selectedStockFilesToDelete.length === uploadStorage.files.length) {
+                            setSelectedStockFilesToDelete([]);
+                          } else {
+                            setSelectedStockFilesToDelete(uploadStorage.files.map((f) => f.name));
+                          }
+                        }}
+                        className="w-4 h-4 rounded accent-[#10B981] cursor-pointer"
+                      />
+                      <span>Chọn tất cả ({uploadStorage?.files.length || 0})</span>
+                    </label>
+
+                    {selectedStockFilesToDelete.length > 0 && (
+                      <span className="text-[11px] text-[#FFD200] font-mono bg-[#FFD200]/10 px-2 py-0.5 rounded border border-[#FFD200]/20">
+                        Đã chọn {selectedStockFilesToDelete.length} clip
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {selectedStockFilesToDelete.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleDeleteSelectedStock}
+                        disabled={isCleaningUploads}
+                        className="px-3 py-1.5 rounded-lg bg-[#FF334B] hover:bg-[#e0243b] text-white text-xs font-bold flex items-center space-x-1.5 transition disabled:opacity-50 shadow"
+                      >
+                        {isCleaningUploads ? (
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <Trash2 className="w-3.5 h-3.5" />
+                        )}
+                        <span>Xóa {selectedStockFilesToDelete.length} file đã chọn</span>
+                      </button>
+                    )}
+
+                    {uploadStorage && uploadStorage.count > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleCleanAllUploads}
+                        disabled={isCleaningUploads}
+                        className="px-3 py-1.5 rounded-lg bg-red-950/80 hover:bg-red-900 border border-red-500/30 text-red-300 hover:text-white text-xs font-bold flex items-center space-x-1.5 transition disabled:opacity-50"
+                        title="Xóa toàn bộ file trong thư mục data/stock-uploads"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Xóa sạch tất cả</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* List of stock files */}
+                <div className="flex-1 overflow-y-auto space-y-2 pr-1 min-h-[200px]">
+                  {(!uploadStorage || uploadStorage.files.length === 0) ? (
+                    <div className="py-12 text-center text-[#EBF8F2]/50 flex flex-col items-center justify-center space-y-2">
+                      <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center text-2xl">
+                        📁
+                      </div>
+                      <p className="text-sm font-semibold text-[#EBF8F2]">Thư mục stock uploads đang trống</p>
+                      <p className="text-xs text-[#EBF8F2]/40">
+                        Không có clip tạm nào cần giải phóng dung lượng.
+                      </p>
+                    </div>
+                  ) : (
+                    uploadStorage.files.map((file) => {
+                      const isChecked = selectedStockFilesToDelete.includes(file.name);
+                      const isDeletingThis = deletingStockFilename === file.name;
+
+                      return (
+                        <div
+                          key={file.name}
+                          className={`p-3 rounded-xl border transition-all flex items-center justify-between gap-3 ${isChecked
+                            ? "bg-[#143D2E] border-[#10B981]/60"
+                            : "bg-[#081C15]/70 border-[#EBF8F2]/10 hover:border-[#EBF8F2]/25"
+                            }`}
+                        >
+                          <div className="flex items-center gap-3 min-w-0 flex-1">
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => {
+                                setSelectedStockFilesToDelete((prev) =>
+                                  prev.includes(file.name)
+                                    ? prev.filter((n) => n !== file.name)
+                                    : [...prev, file.name]
+                                );
+                              }}
+                              className="w-4 h-4 rounded accent-[#10B981] cursor-pointer shrink-0"
+                            />
+
+                            <div className="w-9 h-9 rounded-lg bg-[#FFD200]/10 border border-[#FFD200]/20 flex items-center justify-center text-[#FFD200] shrink-0">
+                              <Film className="w-4 h-4" />
+                            </div>
+
+                            <div className="min-w-0 flex-1">
+                              <p
+                                className="text-xs font-bold text-[#EBF8F2] truncate hover:text-[#FFD200] transition"
+                                title={file.displayName}
+                              >
+                                {file.displayName}
+                              </p>
+                              <div className="flex items-center gap-2 text-[10px] text-[#EBF8F2]/50 font-mono mt-0.5">
+                                <span className="text-[#FFD200] font-bold">{file.sizeFormatted}</span>
+                                <span>•</span>
+                                <span>{file.createdDate}</span>
+                                <span>•</span>
+                                <span className="truncate max-w-[140px] text-[#EBF8F2]/30" title={file.name}>
+                                  {file.name}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteSingleStock(file.name)}
+                              disabled={isDeletingThis || isCleaningUploads}
+                              className="px-2.5 py-1.5 rounded-lg bg-red-950/60 hover:bg-[#FF334B] text-red-300 hover:text-white border border-red-500/30 text-xs font-semibold flex items-center gap-1.5 transition disabled:opacity-40"
+                              title="Xóa riêng clip này"
+                            >
+                              {isDeletingThis ? (
+                                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                              ) : (
+                                <Trash2 className="w-3.5 h-3.5" />
+                              )}
+                              <span className="text-[11px]">Xóa</span>
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </>
+            )}
+
+            {/* ================= PHÂN MỤC 2: QUẢN LÝ KỊCH BẢN DATA JSON ================= */}
+            {storageManagerTab === "templates" && (
+              <>
+                {/* Note & Action toolbar */}
+                <div className="bg-[#081C15] border border-[#EBF8F2]/10 rounded-xl p-3 shrink-0 flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-3">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-[#EBF8F2] cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={
+                          Boolean(
+                            templates.length > 0 &&
+                            selectedTemplatesToDelete.length === templates.length
+                          )
+                        }
+                        onChange={() => {
+                          if (selectedTemplatesToDelete.length === templates.length) {
+                            setSelectedTemplatesToDelete([]);
+                          } else {
+                            setSelectedTemplatesToDelete(templates.map((t) => t.filename));
+                          }
+                        }}
+                        className="w-4 h-4 rounded accent-purple-500 cursor-pointer"
+                      />
+                      <span>Chọn tất cả ({templates.length})</span>
+                    </label>
+
+                    {selectedTemplatesToDelete.length > 0 && (
+                      <span className="text-[11px] text-purple-300 font-mono bg-purple-500/10 px-2 py-0.5 rounded border border-purple-500/20">
+                        Đã chọn {selectedTemplatesToDelete.length} kịch bản
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {selectedTemplatesToDelete.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleDeleteSelectedTemplates}
+                        disabled={isDeletingTemplates}
+                        className="px-3 py-1.5 rounded-lg bg-[#FF334B] hover:bg-[#e0243b] text-white text-xs font-bold flex items-center space-x-1.5 transition disabled:opacity-50 shadow"
+                      >
+                        {isDeletingTemplates ? (
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <Trash2 className="w-3.5 h-3.5" />
+                        )}
+                        <span>Xóa {selectedTemplatesToDelete.length} kịch bản đã chọn</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* List of template JSON files */}
+                <div className="flex-1 overflow-y-auto space-y-2 pr-1 min-h-[200px]">
+                  {templates.length === 0 ? (
+                    <div className="py-12 text-center text-[#EBF8F2]/50 flex flex-col items-center justify-center space-y-2">
+                      <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center text-2xl">
+                        📄
+                      </div>
+                      <p className="text-sm font-semibold text-[#EBF8F2]">Chưa có file kịch bản JSON nào</p>
+                      <p className="text-xs text-[#EBF8F2]/40">
+                        Thư mục data/ hiện tại không có file .json nào.
+                      </p>
+                    </div>
+                  ) : (
+                    templates.map((tpl) => {
+                      const isChecked = selectedTemplatesToDelete.includes(tpl.filename);
+                      const isDeletingThis = deletingTemplateFilename === tpl.filename;
+
+                      // Phân loại định dạng kịch bản
+                      const isBroll = tpl.type === "broll" || Boolean(tpl.data?.sections);
+                      const isPodcast = tpl.type === "podcast";
+                      const isCompare = tpl.type === "compare";
+
+                      return (
+                        <div
+                          key={tpl.filename}
+                          className={`p-3 rounded-xl border transition-all flex items-center justify-between gap-3 ${isChecked
+                            ? "bg-purple-950/40 border-purple-500/60"
+                            : "bg-[#081C15]/70 border-[#EBF8F2]/10 hover:border-[#EBF8F2]/25"
+                            }`}
+                        >
+                          <div className="flex items-center gap-3 min-w-0 flex-1">
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => {
+                                setSelectedTemplatesToDelete((prev) =>
+                                  prev.includes(tpl.filename)
+                                    ? prev.filter((n) => n !== tpl.filename)
+                                    : [...prev, tpl.filename]
+                                );
+                              }}
+                              className="w-4 h-4 rounded accent-purple-500 cursor-pointer shrink-0"
+                            />
+
+                            <div className={`w-9 h-9 rounded-lg border flex items-center justify-center shrink-0 ${isBroll
+                              ? "bg-[#10B981]/15 border-[#10B981]/30 text-[#10B981]"
+                              : isPodcast
+                                ? "bg-purple-500/15 border-purple-500/30 text-purple-400"
+                                : "bg-[#FFD200]/15 border-[#FFD200]/30 text-[#FFD200]"
+                              }`}>
+                              <FileText className="w-4 h-4" />
+                            </div>
+
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2">
+                                <p
+                                  className="text-xs font-bold text-[#EBF8F2] truncate hover:text-purple-300 transition"
+                                  title={tpl.title}
+                                >
+                                  {tpl.title}
+                                </p>
+                                <span className={`text-[9px] px-1.5 py-0.2 rounded font-bold shrink-0 ${isBroll
+                                  ? "bg-[#10B981]/20 text-[#10B981]"
+                                  : isPodcast
+                                    ? "bg-purple-500/20 text-purple-300"
+                                    : isCompare
+                                      ? "bg-[#FFD200]/20 text-[#FFD200]"
+                                      : "bg-white/10 text-[#EBF8F2]/70"
+                                  }`}>
+                                  {isBroll ? "B-Roll" : isPodcast ? "Podcast" : isCompare ? "So Sánh" : "Kịch Bản"}
+                                </span>
+                              </div>
+
+                              <div className="flex items-center gap-2 text-[10px] text-[#EBF8F2]/50 font-mono mt-0.5">
+                                <span className="text-purple-300 font-semibold">{tpl.sizeFormatted || "JSON"}</span>
+                                <span>•</span>
+                                {tpl.itemsCount ? (
+                                  <>
+                                    <span>{tpl.itemsCount} {isBroll ? "phân đoạn" : "câu thoại"}</span>
+                                    <span>•</span>
+                                  </>
+                                ) : null}
+                                <span className="text-[#EBF8F2]/40 truncate max-w-[150px]" title={tpl.filename}>
+                                  {tpl.filename}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {isBroll ? (
+                              <Link
+                                href={`/broll?template=${tpl.slug}`}
+                                className="px-2.5 py-1.5 rounded-lg bg-[#143D2E] hover:bg-[#10B981]/30 text-[#EBF8F2] hover:text-[#FFD200] border border-[#EBF8F2]/20 text-xs font-semibold flex items-center gap-1 transition"
+                                title="Mở kịch bản này trong B-Roll Studio"
+                              >
+                                <Zap className="w-3.5 h-3.5 text-[#FFD200]" />
+                                <span className="text-[11px]">Nạp</span>
+                              </Link>
+                            ) : isPodcast ? (
+                              <Link
+                                href={`/podcast?template=${tpl.slug}`}
+                                className="px-2.5 py-1.5 rounded-lg bg-purple-900/60 hover:bg-purple-800 text-purple-200 hover:text-white border border-purple-500/30 text-xs font-semibold flex items-center gap-1 transition"
+                                title="Mở kịch bản này trong Podcast Studio"
+                              >
+                                <Zap className="w-3.5 h-3.5 text-[#FFD200]" />
+                                <span className="text-[11px]">Nạp</span>
+                              </Link>
+                            ) : (
+                              <Link
+                                href={`/create?template=${tpl.slug}`}
+                                className="px-2.5 py-1.5 rounded-lg bg-[#143D2E] hover:bg-[#10B981]/30 text-[#EBF8F2] hover:text-[#FFD200] border border-[#EBF8F2]/20 text-xs font-semibold flex items-center gap-1 transition"
+                                title="Mở kịch bản này trong Studio So Sánh"
+                              >
+                                <Zap className="w-3.5 h-3.5 text-[#FFD200]" />
+                                <span className="text-[11px]">Nạp</span>
+                              </Link>
+                            )}
+
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteSingleTemplate(tpl.filename, tpl.title)}
+                              disabled={isDeletingThis || isDeletingTemplates}
+                              className="px-2.5 py-1.5 rounded-lg bg-red-950/60 hover:bg-[#FF334B] text-red-300 hover:text-white border border-red-500/30 text-xs font-semibold flex items-center gap-1.5 transition disabled:opacity-40"
+                              title="Xóa vĩnh viễn file kịch bản JSON này"
+                            >
+                              {isDeletingThis ? (
+                                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                              ) : (
+                                <Trash2 className="w-3.5 h-3.5" />
+                              )}
+                              <span className="text-[11px]">Xóa</span>
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </>
+            )}
+
+            {/* Footer */}
+            <div className="pt-3 border-t border-[#EBF8F2]/10 flex items-center justify-between text-xs text-[#EBF8F2]/50 shrink-0">
+              <span className="text-[11px]">
+                {storageManagerTab === "stock"
+                  ? "Xóa file stock tạm ở đây không làm ảnh hưởng đến các video MP4 đã render xong."
+                  : "Xóa kịch bản JSON sẽ loại bỏ file vĩnh viễn khỏi thư mục data/."}
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsStockManagerOpen(false)}
+                className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-xs font-bold text-[#EBF8F2] transition"
+              >
+                Đóng
               </button>
             </div>
           </div>

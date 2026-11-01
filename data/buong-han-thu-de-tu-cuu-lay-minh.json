@@ -1,0 +1,62 @@
+{
+  "slug": "buong-han-thu-de-tu-cuu-lay-minh",
+  "title": "Buông hận thù để tự cứu lấy mình",
+  "provider": "vieneu",
+  "voice": "Hải Đăng",
+  "speed": 1,
+  "sections": [
+    {
+      "section": "HOOK THỰC TẾ (0 - 8s)",
+      "tagline": "(Đánh thức trải nghiệm đời thực)",
+      "textTo": "Càng căm ghét, tim bạn càng nghẹt thở?",
+      "visual": "Cận cảnh bàn tay siết chặt thành nắm đấm đến trắng bệch trong ánh sáng mờ tối, sau đó run rẩy từ từ buông lỏng. (Stock: clenched fist tension dark room moody cinematic vertical)",
+      "voiceover": "Có những đêm, bạn ôm cục tức nghẹn ứ ở lồng ngực [thở dài], chỉ ước gì có thể khiến kẻ đối xử tệ với mình phải trả giá thích đáng đúng không? [nghỉ 1.0s]",
+      "audioEffect": "Tiếng tim đập dồn dập hòa cùng tiếng thở hắt nặng nề ở những giây đầu, tạo cảm giác ngột ngạt."
+    },
+    {
+      "section": "GIẢI MÃ TÂM LÝ (8 - 25s)",
+      "tagline": "(Bẻ gãy lầm tưởng)",
+      "textTo": "Hận thù là tự uống thuốc độc.",
+      "visual": "Dòng nước đen đặc nhỏ giọt xuống ly thủy tinh trong suốt làm vẩn đục toàn bộ, khói sương mờ ảo quay chậm. (Stock: black ink dripping into clear water slow motion dramatic)",
+      "voiceover": "Não bộ đánh lừa bạn rằng nuôi dưỡng sự căm giận là cách để bảo vệ lòng tự trọng. [nghỉ 0.8s] Nhưng sự thật cay đắng là: hận thù giống như việc bạn [lấy hơi] tự uống một chén độc dược [thở dài], rồi ngồi chờ kẻ thù ngã bệnh. Người ta đã sống cuộc đời của họ từ lâu rồi, chỉ có bạn là đang tự đày đọa tế bào của chính mình. [nghỉ 1.2s]",
+      "audioEffect": "Tiếng piano nốt trầm sâu lắng vang lên chậm rãi, tạo không gian suy tưởng sâu sắc."
+    },
+    {
+      "section": "CÔNG CỤ THỰC HÀNH (25 - 55s)",
+      "tagline": "(Quy tắc hành động cụ thể)",
+      "textTo": "Quy tắc 2 bước dập tắt lửa sân hận",
+      "visual": "Cảnh quay chậm giọt sương rơi trên phiến lá sen xanh ngắt, chuyển sang người ngồi thẳng lưng hít thở bình thản bên cửa sổ ngập nắng mai. (Stock: water drop lotus leaf zen meditation morning sunlight vertical)",
+      "voiceover": "[hắng giọng] Để dập tắt ngọn lửa thiêu đốt tâm can này, hãy thực hành đúng hai bước: [nghỉ 0.8s] Bước một: Đổi góc nhìn từ đối đầu sang cách ly. Hãy hiểu rằng hành vi độc hại của họ phản ánh vết thương bên trong họ, bạn không việc gì phải nhảy vào bãi lầy để chứng minh mình sạch sẽ. [nghỉ 0.8s] Bước hai: Cắt đứt nguồn tiếp tế tâm trí. Chặn ngay trang cá nhân của họ, ngừng nhắc tên họ trong mọi câu chuyện. Thứ gì bị bạn tước đoạt sự chú ý, [lấy hơi] thứ đó sẽ tự động tan biến khỏi cuộc đời bạn. [nghỉ 1.2s]",
+      "audioEffect": "Tiếng chuông xoay Tây Tạng ngân vang dịu nhẹ, giai điệu piano chuyển sang tông trong trẻo và thanh thản."
+    },
+    {
+      "section": "LẮNG ĐỌNG & DƯ ÂM (55 - 70s)",
+      "tagline": "(Đúc kết chạm cảm xúc)",
+      "textTo": "Tha thứ là tự do.",
+      "visual": "Góc quay flycam rộng mở cảnh biển bình minh phẳng lặng, bóng người điềm tĩnh ngước nhìn chân trời rực rỡ. (Stock: calm sea sunrise horizon silhouette peaceful aerial 4k vertical)",
+      "voiceover": "Không hận thù... [nghỉ 0.8s] không phải vì kẻ đó xứng đáng được tha thứ. [cười] Mà vì tâm hồn bạn... [nghỉ 0.8s] xứng đáng được bình yên. [nghỉ 1.0s] Buông tay xuống thôi, [nghỉ 0.8s] bạn gánh gồng mệt mỏi đủ rồi.",
+      "audioEffect": "Tiếng sóng biển vỗ rì rào hòa cùng tiếng chuông gió xa xăm, âm thanh nhỏ dần về cuối video."
+    }
+  ],
+  "script": [
+    "Có những đêm, bạn ôm cục tức nghẹn ứ ở lồng ngực [thở dài], chỉ ước gì có thể khiến kẻ đối xử tệ với mình phải trả giá thích đáng đúng không? [nghỉ 1.0s]",
+    "Não bộ đánh lừa bạn rằng nuôi dưỡng sự căm giận là cách để bảo vệ lòng tự trọng. [nghỉ 0.8s] Nhưng sự thật cay đắng là: hận thù giống như việc bạn [lấy hơi] tự uống một chén độc dược [thở dài], rồi ngồi chờ kẻ thù ngã bệnh. Người ta đã sống cuộc đời của họ từ lâu rồi, chỉ có bạn là đang tự đày đọa tế bào của chính mình. [nghỉ 1.2s]",
+    "[hắng giọng] Để dập tắt ngọn lửa thiêu đốt tâm can này, hãy thực hành đúng hai bước: [nghỉ 0.8s] Bước một: Đổi góc nhìn từ đối đầu sang cách ly. Hãy hiểu rằng hành vi độc hại của họ phản ánh vết thương bên trong họ, bạn không việc gì phải nhảy vào bãi lầy để chứng minh mình sạch sẽ. [nghỉ 0.8s] Bước hai: Cắt đứt nguồn tiếp tế tâm trí. Chặn ngay trang cá nhân của họ, ngừng nhắc tên họ trong mọi câu chuyện. Thứ gì bị bạn tước đoạt sự chú ý, [lấy hơi] thứ đó sẽ tự động tan biến khỏi cuộc đời bạn. [nghỉ 1.2s]",
+    "Không hận thù... [nghỉ 0.8s] không phải vì kẻ đó xứng đáng được tha thứ. [cười] Mà vì tâm hồn bạn... [nghỉ 0.8s] xứng đáng được bình yên. [nghỉ 1.0s] Buông tay xuống thôi, [nghỉ 0.8s] bạn gánh gồng mệt mỏi đủ rồi."
+  ],
+  "stockVideos": [],
+  "stockDir": "",
+  "bgmPath": "",
+  "bgmVolume": 0.12,
+  "subtitles": {
+    "fontName": "Montserrat",
+    "fontSize": 72,
+    "baseColor": "#FFF8E7",
+    "highlightColor": "#FFD200",
+    "outlineColor": "#000000",
+    "outlineWidth": 6,
+    "position": "center",
+    "wordsPerChunk": 4,
+    "animation": "smooth"
+  }
+}
