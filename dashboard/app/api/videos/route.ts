@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import fs from "node:fs";
 import path from "node:path";
+import { execSync } from "node:child_process";
 
 function getRootDir(): string {
   const current = process.cwd();
@@ -23,6 +24,19 @@ function formatBytes(bytes: number, decimals = 1): string {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i];
 }
 
+function getVideoDuration(filePath: string): number {
+  try {
+    const raw = execSync(
+      `ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${filePath}"`,
+      { encoding: "utf-8", timeout: 2000 }
+    ).trim();
+    const dur = parseFloat(raw);
+    return isFinite(dur) ? Number(dur.toFixed(2)) : 0;
+  } catch {
+    return 0;
+  }
+}
+
 export async function GET() {
   try {
     const ROOT_DIR = getRootDir();
@@ -38,11 +52,13 @@ export async function GET() {
     const videoList = mp4Files.map((filename) => {
       const fullPath = path.join(OUTPUT_DIR, filename);
       const stat = fs.statSync(fullPath);
+      const duration = getVideoDuration(fullPath);
       return {
         filename,
         title: filename.replace(/\.mp4$/i, ""),
         sizeBytes: stat.size,
         sizeFormatted: formatBytes(stat.size),
+        duration: duration || 0,
         createdAt: stat.birthtime || stat.mtime,
         updatedAt: stat.mtime,
         url: `/api/videos/${filename}`,

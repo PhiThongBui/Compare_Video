@@ -214,7 +214,11 @@ async function generateSingleVoice(text, outPath, provider = "vieneu", voice = "
     const tts = new MsEdgeTTS();
     const v = voice || EDGE_VOICE;
     await tts.setMetadata(v, OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3);
-    const { audioStream } = tts.toStream(text, { rate: "+10%" });
+    // Chuyển thẻ nghỉ thành dấu ba chấm để Edge TTS ngắt nhịp và giảm tốc độ tự nhiên
+    const edgeCleanText = text
+      .replace(/\[(?:nghỉ|pause)[^\]]*\]/gi, "... ")
+      .replace(/\[(?:cười|hắng giọng|thở dài|lấy hơi)[^\]]*\]/gi, "");
+    const { audioStream } = tts.toStream(edgeCleanText, { rate: "+0%" });
     return new Promise((resolve, reject) => {
       const chunks = [];
       audioStream.on("data", (chunk) => chunks.push(chunk));

@@ -452,10 +452,10 @@ function BrollStudioContent() {
     setSections((prev) => prev.filter((_, idx) => idx !== index));
   };
 
-  // Quét thư mục video trên PC
+  // Quét thư mục hoặc thêm file video trực tiếp trên PC
   const handleScanFolder = async () => {
     if (!folderPathInput.trim()) {
-      alert("Vui lòng nhập đường dẫn thư mục chứa video trên máy tính!");
+      alert("Vui lòng dán đường dẫn file video hoặc thư mục trên máy tính!");
       return;
     }
 
@@ -468,9 +468,14 @@ function BrollStudioContent() {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Không thể quét thư mục");
+      if (!res.ok) throw new Error(data.error || "Không thể quét đường dẫn");
 
       if (Array.isArray(data.files)) {
+        if (data.files.length === 0) {
+          alert("Không tìm thấy video nào (.mp4, .mov, .webm, .mkv, .m4v) tại đường dẫn đã nhập!");
+          return;
+        }
+
         const currentPaths = new Set(stockFiles.map((f) => f.path));
         const newItems: StockFileItem[] = [];
 
@@ -485,11 +490,16 @@ function BrollStudioContent() {
           }
         }
 
-        setStockFiles((prev) => [...prev, ...newItems]);
+        if (newItems.length > 0) {
+          setStockFiles((prev) => [...prev, ...newItems]);
+          setFolderPathInput("");
+        } else {
+          alert("Video này đã có sẵn trong danh sách đã chọn!");
+        }
       }
     } catch (err: unknown) {
       const error = err as Error;
-      alert(`Lỗi quét thư mục: ${error.message}`);
+      alert(`Lỗi quét / thêm video: ${error.message}`);
     } finally {
       setIsScanningFolder(false);
     }
@@ -1258,17 +1268,17 @@ function BrollStudioContent() {
               </div>
             )}
 
-            {/* Quét thư mục trên PC */}
+            {/* Quét thư mục hoặc dán file trên PC */}
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-[#EBF8F2]/50 uppercase tracking-wider">
-                Hoặc quét thư mục video trên ổ cứng:
+                Hoặc dán đường dẫn file video / thư mục trên ổ cứng:
               </label>
               <div className="flex gap-1.5">
                 <input
                   type="text"
                   value={folderPathInput}
                   onChange={(e) => setFolderPathInput(e.target.value)}
-                  placeholder="vd: D:\Videos\Stock hoặc data\stock-videos"
+                  placeholder="Dán file (Copy as path) vd: C:\Videos\clip.mp4 hoặc thư mục D:\Stock"
                   className="flex-1 bg-[#071912] border border-[#10B981]/30 rounded-xl px-3 py-2 text-xs text-white placeholder-[#EBF8F2]/30 focus:outline-none focus:border-[#FFD200]"
                 />
                 <button
@@ -1278,7 +1288,7 @@ function BrollStudioContent() {
                   className="px-3.5 py-2 bg-[#143D2E] hover:bg-[#10B981] text-[#FFD200] hover:text-[#081C15] font-bold text-xs rounded-xl border border-[#10B981]/40 flex items-center gap-1 transition-all shrink-0 cursor-pointer"
                 >
                   {isScanningFolder ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FolderOpen className="w-3.5 h-3.5" />}
-                  <span>Quét</span>
+                  <span>Thêm / Quét</span>
                 </button>
               </div>
             </div>

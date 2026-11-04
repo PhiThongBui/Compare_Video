@@ -61,13 +61,14 @@ QUY TẮC TỪ KHÓA (keywordsToHighlight):
 - Trích xuất 6 đến 12 từ/cụm từ quan trọng nhất xuất hiện trong 12 câu kịch bản (ví dụ: tên riêng, con số tài chính, danh hiệu, vị trí, thương hiệu).
 - Các từ trong keywordsToHighlight PHẢI xuất hiện CHÍNH XÁC trong nội dung các câu trên để hệ thống tự động bôi màu làm nổi bật trên màn hình.
 
-QUY TẮC LỒNG GHÉP THẺ CẢM XÚC & NGẮT NHỊP CHO GIỌNG ĐỌC AI (VieNeu-TTS / CIT Voice Studio):
-Trong 12 câu kịch bản so sánh, bạn BẮT BUỘC phải lồng ghép đầy đủ các thẻ cảm xúc sau vào các câu để giọng đọc kịch tính, lôi cuốn như bình luận viên thực thụ:
-- [hắng giọng]: BẮT BUỘC chèn ở câu 3 (nút thắt) hoặc câu 10 (đối chiếu quyết định) để ngắt nhịp trịnh trọng.
+QUY TẮC BẮT BUỘC VỀ NHỊP THỞ, ĐỌC CHẬM & NHẤN NHÁ (AI PACING - CHỐNG ĐỌC TUỒN TUỘT):
+Để giọng đọc AI (VieNeu-TTS / Edge TTS) không bị đọc một mạch trôi tuồn tuột mà biết ĐỌC CHẬM, NGẮT NGHỈ ĐĨNH ĐẠC và DỒN TRỌNG ÂM vào từ đắt giá, bạn BẮT BUỘC phải lồng ghép các ký hiệu sau vào các câu trong mảng "script":
+- [nghỉ 0.8s] hoặc [nghỉ 1s]: BẮT BUỘC chèn trước các con số đắt giá hoặc sau câu hỏi kích thích tò mò để tạo khoảng lặng vàng cho người nghe ngẫm nghĩ.
+- Dấu ba chấm "...": Dùng để kéo dài âm tiết và làm chậm tốc độ đọc trước từ quan trọng.
+- [hắng giọng]: BẮT BUỘC chèn ở câu 3 (nút thắt) hoặc câu 10 (đối chiếu quyết định) để ngắt nhịp trịnh trọng, kéo sự chú ý cao độ.
+- [thở dài]: BẮT BUỘC chèn ở câu chỉ ra cái giá quá đắt, áp lực hoặc mặt trái để hạ tông giọng trầm lắng.
+- [lấy hơi]: Chèn trước khi nêu thông số bùng nổ hoặc trước câu chốt để tạo cảm giác người thật đang lấy hơi nói.
 - [cười]: BẮT BUỘC chèn ở câu châm biếm nhẹ, tự trào hoặc câu 12 (khiêu khích bình luận).
-- [thở dài]: BẮT BUỘC chèn ở câu chỉ ra nhược điểm hoặc cái giá quá đắt của một bên.
-- [lấy hơi]: Chèn trước khi nêu thông số bùng nổ hoặc trước câu chốt.
-- [nghỉ 0.8s] hoặc [nghỉ 1s]: Chèn sau câu hỏi hoặc trước một con số kinh ngạc để kích thích tò mò.
 * NGUYÊN TẮC VỊ TRÍ ĐẶT TAG: Luôn đặt thẻ ở ĐẦU CÂU hoặc GIỮA CÂU (ngay trước từ khóa trọng tâm). TUYỆT ĐỐI KHÔNG ĐẶT Ở CUỐI CÂU sau dấu chấm hoặc dấu chấm hỏi (Ví dụ ĐÚNG: 'Nhưng bạn có biết [thở dài] sự thật là gì?', KHÔNG VIẾT SAI: '...sự thật là gì? [thở dài]').
 
 QUY TẮC TỰ ĐỘNG CHỌN ICON / EMOJI ĐẠI DIỆN (iconA và iconB):
@@ -90,18 +91,18 @@ Chỉ trả về JSON thuần túy (RAW JSON), KHÔNG bọc trong markdown backt
   "iconA": "🐐",
   "iconB": "⚡",
   "script": [
-    "Câu 1...",
-    "Câu 2...",
-    "Câu 3...",
-    "Câu 4...",
-    "Câu 5...",
-    "Câu 6...",
-    "Câu 7...",
-    "Câu 8...",
-    "Câu 9...",
-    "Câu 10...",
-    "Câu 11...",
-    "Câu 12..."
+    "Đây là mức thu nhập... [nghỉ 0.8s] khủng khiếp của Cristiano Ronaldo.",
+    "Còn đây là đãi ngộ không tưởng... [nghỉ 0.8s] của Lionel Messi.",
+    "[hắng giọng] Con số chênh lệch thực sự... [nghỉ 1s] là bao nhiêu?",
+    "Tại Ả Rập, Ronaldo nhận hơn hai trăm triệu euro mỗi năm.",
+    "[lấy hơi] Tương đương sáu euro... [nghỉ 0.6s] cho từng giây trôi qua!",
+    "Bao gồm chuyên cơ riêng, biệt thự triệu đô và dàn siêu xe sang trọng.",
+    "Còn Messi tại Inter Miami, lương cơ bản chỉ bằng một phần mười... [nghỉ 0.8s]",
+    "Nhưng anh lại sở hữu cổ phần câu lạc bộ, và ăn chia doanh thu toàn cầu của Apple TV!",
+    "Một bản hợp đồng trọn đời... [nghỉ 0.8s] mang lại nguồn thu không giới hạn.",
+    "[hắng giọng] Một bên là tiền mặt kỷ lục... [nghỉ 0.6s] Một bên là đế chế kinh doanh lâu dài.",
+    "[thở dài] Cả hai đều đã ở bên kia sườn dốc sự nghiệp...",
+    "[cười] Giữa hai cỗ máy kiếm tiền, bạn nể phục ai hơn? [nghỉ 0.5s] Hãy để lại bình luận!"
   ],
   "keywordsToHighlight": ["từ khóa 1", "từ khóa 2", "từ khóa 3"]
 }`;
@@ -235,6 +236,26 @@ Chỉ trả về JSON thuần túy (RAW JSON), KHÔNG bọc trong markdown backt
   ]
 }`;
 
+const SYSTEM_PROMPT_PACING_ENHANCER = `Bạn là đạo diễn âm thanh và chuyên gia tối ưu nhịp thở giọng đọc AI (AI Voice Director & Pacing Expert).
+Nhiệm vụ của bạn là nhận một câu hoặc một đoạn kịch bản và phân tích ngữ nghĩa sâu sắc để chèn các thẻ ngắt nghỉ, cảm xúc và nhịp thở cho giọng đọc AI (VieNeu-TTS / CIT Voice Studio, Edge TTS) để giọng đọc KHÔNG BỊ ĐỌC TUỒN TUỘT, mà biết ĐỌC CHẬM LẠI, NGẮT NGHỈ ĐĨNH ĐẠC và DỒN TRỌNG ÂM vào các từ đắt giá.
+
+QUY TẮC CÀI ĐẶT THẺ CHỈ DẪN GIỌNG ĐỌC:
+1. Thẻ [nghỉ 0.8s] hoặc [nghỉ 1s]: Chèn sau câu hỏi, trước con số đắt giá hoặc giữa 2 vế câu đối lập để tạo khoảng lặng vàng.
+2. Dấu ba chấm "...": Chèn để kéo dài âm tiết và làm chậm nhịp độ đọc trước một từ đắt giá.
+3. [hắng giọng]: Chèn trước nhận định quan trọng hoặc công thức hành động.
+4. [lấy hơi]: Chèn trước vế câu dài hoặc trước cao trào để người đọc lấy hơi.
+5. [thở dài]: Chèn ở câu trăn trở, nuối tiếc, sự thật phũ phàng.
+6. [cười]: Chèn ở câu châm biếm nhẹ, tự trào hoặc câu kết vui vẻ.
+* VỊ TRÍ TAG: Đặt ở ĐẦU CÂU hoặc GIỮA CÂU (ngay trước từ khóa trọng tâm). TUYỆT ĐỐI KHÔNG đặt sau dấu chấm ở cuối câu.
+
+ĐỊNH DẠNG ĐẦU RA BẮT BUỘC (RAW JSON thuần túy, không bọc markdown):
+{
+  "original": "câu gốc",
+  "enhancedTts": "câu đã chèn các thẻ ngắt nghỉ [nghỉ 0.8s], [thở dài], ...",
+  "cleanCaption": "câu hiển thị sạch sẽ không có thẻ [..]",
+  "explanation": "lý do ngắn gọn vì sao ngắt nghỉ ở đó"
+}`;
+
 function cleanJsonResponse(raw: string): string {
   let cleaned = raw.trim();
   if (cleaned.startsWith("```json")) {
@@ -258,13 +279,21 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { idea, refinePrompt, currentScript, mode = "compare" } = body;
+    const isPacing = mode === "enhance-pacing";
     const isPodcast = mode === "podcast";
     const isBroll = mode === "broll" || mode === "stock";
     const isRefinement = Boolean(refinePrompt && refinePrompt.trim() && currentScript);
 
-    if (!isRefinement && (!idea || !idea.trim())) {
+    if (!isRefinement && !isPacing && (!idea || !idea.trim())) {
       return NextResponse.json(
         { error: isPodcast ? "Vui lòng nhập chủ đề thảo luận podcast" : (isBroll ? "Vui lòng nhập chủ đề video B-roll" : "Vui lòng nhập ý tưởng kịch bản so sánh") },
+        { status: 400 }
+      );
+    }
+
+    if (isPacing && (!idea || !idea.trim())) {
+      return NextResponse.json(
+        { error: "Vui lòng nhập câu thoại cần tối ưu nhịp thở và nhấn nhá" },
         { status: 400 }
       );
     }
@@ -280,7 +309,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const activeSystemPrompt = isBroll
+    const activeSystemPrompt = isPacing
+      ? SYSTEM_PROMPT_PACING_ENHANCER
+      : isBroll
       ? SYSTEM_PROMPT_BROLL
       : isPodcast
       ? SYSTEM_PROMPT_PODCAST
@@ -288,7 +319,9 @@ export async function POST(req: NextRequest) {
 
     // Xây dựng prompt phù hợp: Tạo mới hay Tinh chỉnh kịch bản cũ
     let promptText = "";
-    if (isBroll) {
+    if (isPacing) {
+      promptText = `Câu thoại gốc cần tinh chỉnh nhịp thở và nhấn nhá: "${idea.trim()}". Hãy phân tích ngữ nghĩa và chèn thẻ [nghỉ 0.8s], [nghỉ 1s], ..., [lấy hơi], [hắng giọng], [thở dài] vào đúng vị trí cần đọc chậm để người nghe kịp ngẫm. Trả về RAW JSON.`;
+    } else if (isBroll) {
       if (isRefinement) {
         const curLines = Array.isArray(currentScript?.script)
           ? currentScript.script.map((s: string, idx: number) => `  Câu ${idx + 1}: "${s}"`).join("\n")

@@ -1,0 +1,63 @@
+{
+    "slug": "bo-loc-chon-sep-va-dong-nghiep",
+    "title": "Bộ Lọc Chọn Sếp Và Đồng Nghiệp",
+    "provider": "vieneu",
+    "voice": "Hải Đăng",
+    "speed": 1,
+    "reuseVoice": true,
+    "sections": [
+        {
+            "section": "HOOK MỞ ĐẦU (0 - 6s)",
+            "tagline": "(Tạo sự tột cùng đồng cảm)",
+            "textTo": "Tiền lương cao đến mấy mà gặp sếp tâm lý bất ổn thì tiền đó không đủ đi chữa lành!",
+            "visual": "Cận cảnh bàn phím máy tính trong văn phòng tối, một bàn tay ôm trán mệt mỏi. (Stock: stressed office worker late night dark room vertical)",
+            "voiceover": "Tiền lương có cao đến mấy... nhưng cứ bước chân vào văn phòng mà phải nơm nớp nhìn sắc mặt sếp, thì bao nhiêu tiền đó cũng không đủ để đi chữa lành tâm thần!",
+            "audioEffect": "Tiếng thở dài ngao ngán, âm thanh gõ phím lách cách dồn dập."
+        },
+        {
+            "section": "CÂU CHUYỆN GÂY SỐC (6 - 22s)",
+            "tagline": "(Chi tiết đắt giá từ thực tế)",
+            "textTo": "Đang thắp nhang cầu cho gia đình sếp êm vui...",
+            "visual": "Cảnh nén hương đang cháy mập mờ khói trắng trong một góc văn phòng nhỏ. (Stock: burning incense stick office subtle smoke cinematic vertical)",
+            "voiceover": "Tôi nhớ mãi lần ghé công ty của một anh đối tác. Vừa bước vào, đập vào mắt tôi là chị kế toán kiêm tiếp tân đang thắp nhang. Thấy tôi ngạc nhiên, chị thở dài bảo: 'Đang cầu cho nhà ông sếp hôm nay êm vui, chứ không là nguyên cái công ty này ăn đủ mệt với ổng!'.",
+            "audioEffect": "BGM nhạc piano trầm xuống, tạo không khí tò mò, châm biếm nhẹ."
+        },
+        {
+            "section": "BƯỚC NGOẶT NHẬN THỨC (22 - 42s)",
+            "tagline": "(Góc nhìn chọn việc chọn người)",
+            "textTo": "Đi phỏng vấn bây giờ phải nhìn tình trạng gia đình của sếp.",
+            "visual": "Cảnh một người đang lướt hồ sơ xin việc hoặc ngồi đăm chiêu quán cà phê một mình. (Stock: person looking at resume thoughtful coffee shop window vertical)",
+            "voiceover": "Câu chuyện cười ra nước mắt đó theo tôi đến tận bây giờ. Sau này đi phỏng vấn hay chọn team làm chung, việc đầu tiên tôi nhìn không phải là lương, mà là mặt mũi sếp trực tiếp ra sao, gia đình con cái thế nào. Đàn ông hay phụ nữ mà cảm xúc thất thường, thì sớm muộn gì nhân viên cũng trầm cảm.",
+            "audioEffect": "Âm thanh nhịp tim đập nhẹ tăng dần độ kịch tính."
+        },
+        {
+            "section": "ĐÚC KẾT SÂU SẮC (42 - 58s)",
+            "tagline": "(Thông điệp chạm đáy)",
+            "textTo": "Biên độ cảm xúc êm như mặt hồ chính là phước lớn.",
+            "visual": "Góc quay mặt hồ nước phẳng lặng phản chiếu ánh nắng chiều yên bình. (Stock: calm peaceful lake surface sunset golden hour vertical)",
+            "voiceover": "Người có tâm lý ổn định là người có biên độ cảm xúc như mặt hồ. Gặp chuyện vui không quá phấn khích, gặp chuyện buồn không sụp đổ. Để có được điều đó, thân và tâm phải khỏe. Đừng nói chuyện tạo giá trị to tát gì cả... lớn rồi, giữ được cho mình một cái đầu tỉnh táo, bớt báo, bớt phiền cho người xung quanh, thế là phước lớn lắm rồi.",
+            "audioEffect": "Nốt piano cuối ngân dài, tiếng gió thổi nhẹ mang lại cảm giác giải tỏa, nhẹ nhõm."
+        }
+    ],
+    "script": [
+        "Tiền lương có cao đến mấy... nhưng cứ bước chân vào văn phòng mà phải nơm nớp nhìn sắc mặt sếp, thì bao nhiêu tiền đó cũng không đủ để đi chữa lành tâm thần!",
+        "Tôi nhớ mãi lần ghé công ty của một anh đối tác. Vừa bước vào, đập vào mắt tôi là chị kế toán kiêm tiếp tân đang thắp nhang. Thấy tôi ngạc nhiên, chị thở dài bảo: 'Đang cầu cho nhà ông sếp hôm nay êm vui, chứ không là nguyên cái công ty này ăn đủ mệt với ổng!'.",
+        "Câu chuyện cười ra nước mắt đó theo tôi đến tận bây giờ. Sau này đi phỏng vấn hay chọn team làm chung, việc đầu tiên tôi nhìn không phải là lương, mà là mặt mũi sếp trực tiếp ra sao, gia đình con cái thế nào. Đàn ông hay phụ nữ mà cảm xúc thất thường, thì sớm muộn gì nhân viên cũng trầm cảm.",
+        "Người có tâm lý ổn định là người có biên độ cảm xúc như mặt hồ. Gặp chuyện vui không quá phấn khích, gặp chuyện buồn không sụp đổ. Để có được điều đó, thân và tâm phải khỏe. Đừng nói chuyện tạo giá trị to tát gì cả... lớn rồi, giữ được cho mình một cái đầu tỉnh táo, bớt báo, bớt phiền cho người xung quanh, thế là phước lớn lắm rồi."
+    ],
+    "stockVideos": [],
+    "stockDir": "",
+    "bgmPath": "",
+    "bgmVolume": 0.12,
+    "subtitles": {
+        "fontName": "Montserrat",
+        "fontSize": 72,
+        "baseColor": "#FFF8E7",
+        "highlightColor": "#FFD200",
+        "outlineColor": "#000000",
+        "outlineWidth": 6,
+        "position": "center",
+        "wordsPerChunk": 4,
+        "animation": "smooth"
+    }
+}

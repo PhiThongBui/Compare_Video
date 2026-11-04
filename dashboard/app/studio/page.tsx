@@ -172,56 +172,7 @@ const INITIAL_PROJECT: StudioProject = {
       isMuted: false,
       isHidden: false,
       isLocked: false,
-      clips: [
-        {
-          id: "sub_1",
-          trackId: "track_sub",
-          type: "subtitle",
-          name: "Sub 1: Lương Ronaldo",
-          start: 0.5,
-          duration: 3.5,
-          inPoint: 0,
-          outPoint: 3.5,
-          speed: 1.0,
-          volume: 1.0,
-          text: "Đây là mức thu nhập khủng khiếp của Cristiano Ronaldo",
-          words: [
-            { word: "Đây", start: 0.5, end: 0.8 },
-            { word: "là", start: 0.8, end: 1.1 },
-            { word: "mức", start: 1.1, end: 1.4 },
-            { word: "thu", start: 1.4, end: 1.7 },
-            { word: "nhập", start: 1.7, end: 2.1 },
-            { word: "khủng", start: 2.1, end: 2.5 },
-            { word: "khiếp", start: 2.5, end: 2.9 },
-            { word: "của", start: 2.9, end: 3.2 },
-            { word: "Ronaldo", start: 3.2, end: 4.0 },
-          ],
-        },
-        {
-          id: "sub_2",
-          trackId: "track_sub",
-          type: "subtitle",
-          name: "Sub 2: Đãi Ngộ Messi",
-          start: 4.2,
-          duration: 3.8,
-          inPoint: 0,
-          outPoint: 3.8,
-          speed: 1.0,
-          volume: 1.0,
-          text: "Còn đây là đãi ngộ không tưởng của Lionel Messi",
-          words: [
-            { word: "Còn", start: 4.2, end: 4.5 },
-            { word: "đây", start: 4.5, end: 4.8 },
-            { word: "là", start: 4.8, end: 5.1 },
-            { word: "đãi", start: 5.1, end: 5.5 },
-            { word: "ngộ", start: 5.5, end: 5.9 },
-            { word: "không", start: 5.9, end: 6.3 },
-            { word: "tưởng", start: 6.3, end: 6.8 },
-            { word: "của", start: 6.8, end: 7.1 },
-            { word: "Messi", start: 7.1, end: 8.0 },
-          ],
-        },
-      ],
+      clips: [],
     },
     {
       id: "track_overlay",
@@ -232,21 +183,7 @@ const INITIAL_PROJECT: StudioProject = {
       isMuted: false,
       isHidden: false,
       isLocked: false,
-      clips: [
-        {
-          id: "ov_1",
-          trackId: "track_overlay",
-          type: "overlay",
-          name: "@PhiaSauSanCo",
-          start: 0,
-          duration: 25.0,
-          inPoint: 0,
-          outPoint: 25.0,
-          speed: 1.0,
-          volume: 1.0,
-          text: "@PhiaSauSanCo",
-        },
-      ],
+      clips: [],
     },
     {
       id: "track_video",
@@ -304,8 +241,8 @@ const INITIAL_PROJECT: StudioProject = {
     position: "middle-bottom",
   },
   watermark: {
-    enabled: true,
-    text: "@PhiaSauSanCo",
+    enabled: false,
+    text: "",
     position: "bottom-center",
     size: 28,
     opacity: 0.85,
@@ -441,6 +378,7 @@ function StudioProContent() {
   const timelineScrollRef = useRef<HTMLDivElement | null>(null);
   const animFrameRef = useRef<number | null>(null);
   const lastTimeRef = useRef<number>(0);
+  const anchorTimeRef = useRef<{ perf: number; video: number } | null>(null);
 
   // Lấy clip đang chọn
   const selectedClip = React.useMemo(() => {
@@ -463,17 +401,33 @@ function StudioProContent() {
     return null;
   }, [project, selectedClip, selectedTrackId]);
 
-  // Load danh sách video và uploads từ API
+  // Load danh sách video và uploads từ API (CHỈ LẤY FILE VIDEO, TUYỆT ĐỐI KHÔNG LẤY JSON, MP3)
   const fetchAvailableMedia = async () => {
     try {
       setIsLoadingMedia(true);
       const [vidsRes, stocksRes] = await Promise.all([
         fetch("/api/videos").catch(() => null),
-        fetch("/api/upload-stock").catch(() => null),
+        fetch("/api/upload-stock?type=video").catch(() => null),
       ]);
 
       const vidsData = vidsRes && vidsRes.ok ? await vidsRes.json() : { videos: [] };
       const stocksData = stocksRes && stocksRes.ok ? await stocksRes.json() : { files: [] };
+
+      // Bộ lọc nhận diện file video thực thụ (.mp4, .webm, .mov, .mkv)
+      const isVideoFile = (f: any) => {
+        const name = (f?.filename || f?.name || f?.title || f?.url || "").toLowerCase();
+        if (
+          name.endsWith(".json") ||
+          name.endsWith(".mp3") ||
+          name.endsWith(".wav") ||
+          name.endsWith(".ogg") ||
+          name.endsWith(".m4a") ||
+          name.endsWith(".aac")
+        ) {
+          return false;
+        }
+        return name.endsWith(".mp4") || name.endsWith(".webm") || name.endsWith(".mov") || name.endsWith(".mkv");
+      };
 
       const all = [
         ...(vidsData.videos || []).map((v: any) => ({ ...v, source: "output" })),
@@ -482,85 +436,125 @@ function StudioProContent() {
           title: s.displayName || s.name,
           url: s.previewUrl || `/api/upload-stock?stream=1&filename=${encodeURIComponent(s.name)}`,
           sizeFormatted: s.sizeFormatted,
+          duration: s.duration || 0,
           source: "stock-uploads",
         })),
-      ];
+      ].filter(isVideoFile);
 
+      // Kho Video & Stock CHỈ lưu các file video thực thụ
       setAvailableVideos(all);
 
-      // Lọc danh sách file video thực thụ (không nhận nhầm file mp3/wav làm video chính)
-      const isVideoFile = (f: any) => {
-        const name = (f?.filename || f?.name || f?.title || f?.url || "").toLowerCase();
-        return name.endsWith(".mp4") || name.endsWith(".webm") || name.endsWith(".mov") || name.endsWith(".mkv");
-      };
+      // Tự động đồng bộ thời lượng các clip trên timeline với thời lượng file thực tế nếu có
+      setProject((prev) => {
+        let changed = false;
+        const updatedTracks = prev.tracks.map((t) => {
+          if (t.type === "main-video") {
+            const updatedClips = t.clips.map((c) => {
+              const matchMedia = all.find(
+                (m) => m.url === c.src || m.filename === c.name || c.name.includes(m.title)
+              );
+              if (matchMedia && matchMedia.duration && matchMedia.duration > 0) {
+                if (c.duration === 25.0 || c.duration === 8.0 || Math.abs(c.duration - matchMedia.duration) > 0.5) {
+                  changed = true;
+                  return {
+                    ...c,
+                    duration: matchMedia.duration,
+                    outPoint: c.inPoint + matchMedia.duration,
+                  };
+                }
+              }
+              return c;
+            });
+            return { ...t, clips: updatedClips };
+          }
+          return t;
+        });
 
-      const actualVideos = all.filter(isVideoFile);
+        if (changed) {
+          const maxEnd = Math.max(
+            ...updatedTracks.flatMap((tr) => tr.clips.map((cl) => cl.start + cl.duration)),
+            25.0
+          );
+          return {
+            ...prev,
+            duration: Number(maxEnd.toFixed(2)),
+            tracks: updatedTracks,
+          };
+        }
+        return prev;
+      });
 
-      // Nếu có videoParam, ưu tiên chọn video đó; hoặc tự động gán video đầu tiên để preview
-      if (actualVideos.length > 0) {
-        let matched = actualVideos[0];
-        if (videoParam) {
-          const cleanParam = decodeURIComponent(videoParam).trim();
-          const found = actualVideos.find(
+      const actualVideos = all;
+
+      // Chỉ khi người dùng truyền tham số videoParam trên URL (?video=...) thì mới tự động gán video
+      if (videoParam && actualVideos.length > 0) {
+        const cleanParam = decodeURIComponent(videoParam).trim();
+        const matched =
+          actualVideos.find(
             (v) =>
               v.filename === cleanParam ||
               v.filename === `${cleanParam}.mp4` ||
               v.title.toLowerCase() === cleanParam.toLowerCase()
-          );
-          if (found) matched = found;
-        }
+          ) || actualVideos[0];
+
+        const matchedDuration = matched.duration > 0 ? matched.duration : 25.0;
 
         setProject((prev) => {
           const videoTrack = prev.tracks.find((t) => t.type === "main-video");
-          if (videoTrack) {
-            // Lọc bỏ file audio rác bị gán nhầm vào track video
-            const validVideoClips = videoTrack.clips.filter((c) => isVideoFile(c));
-            if (validVideoClips.length > 0 && !videoParam) {
-              if (validVideoClips.length !== videoTrack.clips.length) {
-                return {
-                  ...prev,
-                  tracks: prev.tracks.map((t) => (t.id === videoTrack.id ? { ...t, clips: validVideoClips } : t)),
-                };
-              }
-              return prev;
-            }
+          if (!videoTrack || videoTrack.clips.length > 0) return prev;
 
-            const updated = prev.tracks.map((t) =>
-              t.id === videoTrack.id
-                ? {
-                    ...t,
-                    clips: [
-                      {
-                        id: `clip_${Date.now()}`,
-                        trackId: t.id,
-                        type: "video" as const,
-                        name: matched.title,
-                        src: matched.url,
-                        start: 0,
-                        duration: prev.duration,
-                        inPoint: 0,
-                        outPoint: prev.duration,
-                        speed: 1.0,
-                        volume: 1.0,
-                        colorFilter: "none",
-                      },
-                    ],
-                  }
-                : t
-            );
-            return {
-              ...prev,
-              name: videoParam ? `Biên Tập: ${matched.title}` : prev.name,
-              tracks: updated,
-            };
-          }
-          return prev;
+          const updated = prev.tracks.map((t) =>
+            t.id === videoTrack.id
+              ? {
+                  ...t,
+                  clips: [
+                    {
+                      id: `clip_${Date.now()}`,
+                      trackId: t.id,
+                      type: "video" as const,
+                      name: matched.title,
+                      src: matched.url,
+                      start: 0,
+                      duration: matchedDuration,
+                      inPoint: 0,
+                      outPoint: matchedDuration,
+                      speed: 1.0,
+                      volume: 1.0,
+                      colorFilter: "none",
+                    },
+                  ],
+                }
+              : t
+          );
+          return {
+            ...prev,
+            duration: Math.max(matchedDuration, prev.duration),
+            name: `Biên Tập: ${matched.title}`,
+            tracks: updated,
+          };
         });
       }
     } catch (err) {
       console.error("Lỗi fetch media:", err);
     } finally {
       setIsLoadingMedia(false);
+    }
+  };
+
+  // Tạo dự án mới (xóa trắng các track trên timeline để bắt đầu từ đầu)
+  const handleNewProject = () => {
+    if (confirm("Bạn có muốn tạo dự án mới (xóa trắng toàn bộ timeline) không?")) {
+      try {
+        localStorage.removeItem("studio_pro_draft_v1");
+      } catch {}
+      setProject({
+        ...INITIAL_PROJECT,
+        id: `proj_${Date.now()}`,
+        name: "Dự Án Video Mới",
+      });
+      setSelectedClipId(null);
+      setCurrentTime(0);
+      setIsPlaying(false);
     }
   };
 
@@ -770,9 +764,7 @@ function StudioProContent() {
   };
 
   // --- TÍNH NĂNG GIAI ĐOẠN 4: 1. AI VOICEOVER TRỰC TIẾP (CIT VOICE STUDIO CLONE) ---
-  const [voiceoverText, setVoiceoverText] = useState(
-    "Đây là mức thu nhập khủng khiếp của Cristiano Ronaldo tại giải đấu Ả Rập Xê Út [cười] nhưng thật sự hoàn toàn xứng đáng! [nghỉ 1s]"
-  );
+  const [voiceoverText, setVoiceoverText] = useState("");
   const [voiceoverVoice, setVoiceoverVoice] = useState("Hải Đăng");
   const [voiceoverProvider, setVoiceoverProvider] = useState<"vieneu" | "supertonic" | "edge">("vieneu");
   const [voiceoverSpeed, setVoiceoverSpeed] = useState(1.0);
@@ -1107,12 +1099,46 @@ function StudioProContent() {
           // Tự động dọn dẹp các clip audio bị gán nhầm vào track video (ví dụ: voice-*.mp3)
           const isAudioExt = (urlOrName: string) => /\.(mp3|wav|ogg|m4a|aac)(\?|$)/i.test(urlOrName || "");
           parsed.tracks = parsed.tracks.map((t: any) => {
+            if (t.type === "subtitle" || t.id === "track_sub") {
+              // Tự động loại bỏ các clip phụ đề mẫu Ronaldo/Messi trước đây
+              const cleanClips = (t.clips || []).filter(
+                (c: any) =>
+                  c.id !== "sub_1" &&
+                  c.id !== "sub_2" &&
+                  !c.text?.includes("Cristiano Ronaldo") &&
+                  !c.text?.includes("Lionel Messi")
+              );
+              return { ...t, clips: cleanClips };
+            }
+            if (t.type === "overlay" || t.id === "track_overlay") {
+              // Tự động loại bỏ watermark mẫu @PhiaSauSanCo
+              const cleanClips = (t.clips || []).filter((c: any) => c.id !== "ov_1" && c.text !== "@PhiaSauSanCo");
+              return { ...t, clips: cleanClips };
+            }
             if (t.type === "main-video" || t.id === "track_video") {
-              const validClips = (t.clips || []).filter((c: any) => !isAudioExt(c.src || c.name));
+              const validClips = (t.clips || []).filter((c: any) => !isAudioExt(c.src || c.name)).map((c: any) => {
+                if (
+                  (c.name?.includes("yeu-lay-ngay-bat-luc") || c.src?.includes("yeu-lay-ngay-bat-luc")) &&
+                  (c.duration === 25.0 || c.duration === 8.0)
+                ) {
+                  return { ...c, duration: 50.54, outPoint: 50.54 };
+                }
+                return c;
+              });
               return { ...t, clips: validClips };
             }
             return t;
           });
+          if (parsed.watermark?.text === "@PhiaSauSanCo") {
+            parsed.watermark.text = "";
+            parsed.watermark.enabled = false;
+          }
+          const hasYeuLayVideo = parsed.tracks?.some((t: any) =>
+            t.clips?.some((c: any) => c.name?.includes("yeu-lay-ngay-bat-luc") || c.src?.includes("yeu-lay-ngay-bat-luc"))
+          );
+          if (hasYeuLayVideo && (parsed.duration === 25.0 || parsed.duration === 51.0)) {
+            parsed.duration = 50.54;
+          }
           setProject(parsed);
         }
       }
@@ -1124,24 +1150,130 @@ function StudioProContent() {
   }, []);
 
   // --- MASTER CLOCK: ĐIỀU KHIỂN PHÁT & TICKER ---
+  const currentTimeRef = useRef(currentTime);
+  currentTimeRef.current = currentTime;
+
+  // Tự động nhận diện thời lượng video thực tế từ file và cập nhật timeline
+  const handleVideoLoadedMetadata = (e: React.SyntheticEvent<HTMLVideoElement>) => {
+    const videoEl = e.currentTarget;
+    const realDur = videoEl.duration;
+    if (!realDur || isNaN(realDur) || !isFinite(realDur)) return;
+
+    const roundedDur = Number(realDur.toFixed(2));
+
+    setProject((prev) => {
+      const updatedTracks = prev.tracks.map((t) => {
+        if (t.type === "main-video") {
+          const updatedClips = t.clips.map((c) => {
+            // Cập nhật clip video chính khớp chính xác với video thực tế
+            if (
+              c.src === videoEl.src ||
+              c.src === videoEl.currentSrc ||
+              videoEl.src.includes(c.name) ||
+              videoEl.currentSrc.includes(c.name) ||
+              t.clips.length === 1 // Nếu chỉ có 1 clip duy nhất trên track
+            ) {
+              return {
+                ...c,
+                duration: roundedDur,
+                outPoint: c.inPoint + roundedDur,
+              };
+            }
+            return c;
+          });
+          return { ...t, clips: updatedClips };
+        }
+        return t;
+      });
+
+      // Duration của project phải khớp đúng với video thực tế (hoặc clip dài nhất trên timeline)
+      const maxClipEnd = Math.max(
+        roundedDur,
+        ...updatedTracks.flatMap((tr) => tr.clips.map((cl) => cl.start + cl.duration))
+      );
+      const newDur = Number(maxClipEnd.toFixed(2));
+
+      return {
+        ...prev,
+        duration: newDur,
+        tracks: updatedTracks,
+      };
+    });
+  };
+
   const togglePlay = () => {
-    setIsPlaying((prev) => !prev);
+    anchorTimeRef.current = null;
+    if (!isPlaying) {
+      // Nếu playhead đang ở cuối video, tự động tua về 0 trước khi phát
+      let startTime = currentTime;
+      if (startTime >= project.duration - 0.2) {
+        startTime = 0;
+        handleSeek(0);
+      }
+
+      if (mainVideoRef.current) {
+        const videoTrack = project.tracks.find((t) => t.type === "main-video");
+        const activeClip = videoTrack?.clips.find(
+          (c) => startTime >= c.start && startTime <= c.start + c.duration
+        ) || videoTrack?.clips[0];
+
+        if (activeClip) {
+          const targetOffset = activeClip.inPoint + (startTime - activeClip.start) * (activeClip.speed || 1.0);
+          mainVideoRef.current.currentTime = Math.max(0, targetOffset);
+        } else {
+          mainVideoRef.current.currentTime = startTime;
+        }
+
+        // Bắt đầu phát trực tiếp trong sự kiện click người dùng (tránh autoplay block)
+        mainVideoRef.current.play().catch((err) => {
+          console.warn("Autoplay with audio blocked, trying muted:", err);
+          if (mainVideoRef.current) {
+            mainVideoRef.current.muted = true;
+            mainVideoRef.current.play().catch(() => {});
+          }
+        });
+      }
+
+      if (bgVideoRef.current) bgVideoRef.current.play().catch(() => {});
+      if (bgmAudioRef.current) bgmAudioRef.current.play().catch(() => {});
+
+      setIsPlaying(true);
+    } else {
+      if (mainVideoRef.current) mainVideoRef.current.pause();
+      if (bgVideoRef.current) bgVideoRef.current.pause();
+      if (bgmAudioRef.current) bgmAudioRef.current.pause();
+      if (voiceAudioRef.current) voiceAudioRef.current.pause();
+      setIsPlaying(false);
+    }
   };
 
   const handleSeek = (newTime: number) => {
+    anchorTimeRef.current = null;
     const clamped = Math.max(0, Math.min(project.duration, newTime));
     setCurrentTime(clamped);
 
-    // Đồng bộ phần cứng video & audio
+    // Đồng bộ phần cứng video chính
     if (mainVideoRef.current) {
-      mainVideoRef.current.currentTime = clamped;
+      const videoTrack = project.tracks.find((t) => t.type === "main-video");
+      const activeClip = videoTrack?.clips.find(
+        (c) => clamped >= c.start && clamped <= c.start + c.duration
+      ) || videoTrack?.clips[0];
+
+      if (activeClip) {
+        const offset = activeClip.inPoint + (clamped - activeClip.start) * (activeClip.speed || 1.0);
+        mainVideoRef.current.currentTime = Math.max(0, offset);
+      } else {
+        mainVideoRef.current.currentTime = clamped;
+      }
     }
+
     if (bgVideoRef.current) {
       bgVideoRef.current.currentTime = clamped;
     }
     if (bgmAudioRef.current) {
       bgmAudioRef.current.currentTime = clamped;
     }
+
     if (voiceAudioRef.current) {
       const trackVoice = project.tracks.find((t) => t.type === "voiceover");
       const activeVoiceClip = trackVoice?.clips.find(
@@ -1159,14 +1291,15 @@ function StudioProContent() {
     }
   };
 
-  // Vòng lặp phát mượt mà qua requestAnimationFrame
+  // Vòng lặp phát mượt mà qua requestAnimationFrame & khóa cứng với clock phần cứng video
   useEffect(() => {
     const trackVoice = project.tracks.find((t) => t.type === "voiceover");
     const activeVoiceClip = trackVoice?.clips.find(
-      (c) => currentTime >= c.start && currentTime <= c.start + c.duration
+      (c) => currentTimeRef.current >= c.start && currentTimeRef.current <= c.start + c.duration
     );
 
     if (!isPlaying) {
+      anchorTimeRef.current = null;
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
       if (mainVideoRef.current) mainVideoRef.current.pause();
       if (bgVideoRef.current) bgVideoRef.current.pause();
@@ -1175,7 +1308,22 @@ function StudioProContent() {
       return;
     }
 
-    if (mainVideoRef.current) mainVideoRef.current.play().catch(() => {});
+    // Bắt đầu phát các media từ đúng vị trí currentTime
+    if (mainVideoRef.current) {
+      const videoTrack = project.tracks.find((t) => t.type === "main-video");
+      const activeClip = videoTrack?.clips.find(
+        (c) => currentTimeRef.current >= c.start && currentTimeRef.current <= c.start + c.duration
+      ) || videoTrack?.clips[0];
+
+      if (activeClip) {
+        const targetTime = activeClip.inPoint + (currentTimeRef.current - activeClip.start) * (activeClip.speed || 1.0);
+        if (Math.abs(mainVideoRef.current.currentTime - targetTime) > 0.1) {
+          mainVideoRef.current.currentTime = Math.max(0, targetTime);
+        }
+      }
+      mainVideoRef.current.play().catch(() => {});
+    }
+
     if (bgVideoRef.current) bgVideoRef.current.play().catch(() => {});
     if (bgmAudioRef.current) bgmAudioRef.current.play().catch(() => {});
 
@@ -1185,7 +1333,7 @@ function StudioProContent() {
         if (voiceAudioRef.current.src !== activeVoiceClip.src) {
           voiceAudioRef.current.src = activeVoiceClip.src;
         }
-        const offset = Math.max(0, currentTime - activeVoiceClip.start);
+        const offset = Math.max(0, currentTimeRef.current - activeVoiceClip.start);
         if (Math.abs(voiceAudioRef.current.currentTime - offset) > 0.2) {
           voiceAudioRef.current.currentTime = offset;
         }
@@ -1198,22 +1346,102 @@ function StudioProContent() {
     lastTimeRef.current = performance.now();
 
     const loop = (now: number) => {
-      const deltaSec = (now - lastTimeRef.current) / 1000;
-      lastTimeRef.current = now;
+      const videoTrack = project.tracks.find((t) => t.type === "main-video");
+      const hasMainVideo = videoTrack && videoTrack.clips.length > 0;
 
-      setCurrentTime((prev) => {
-        const next = prev + deltaSec;
-        if (next >= project.duration) {
+      // 1. Nếu có video chính trên timeline, khóa chặt theo video phần cứng
+      if (hasMainVideo && mainVideoRef.current) {
+        // Nếu video đã kết thúc, DỪNG LẠI NGAY LẬP TỨC (không cho chạy quá ra khỏi video!)
+        if (mainVideoRef.current.ended) {
           if (isLoop) {
             handleSeek(0);
-            return 0;
+            if (mainVideoRef.current) mainVideoRef.current.play().catch(() => {});
           } else {
             setIsPlaying(false);
-            return project.duration;
+            setCurrentTime(project.duration);
+          }
+          return;
+        }
+
+        if (!mainVideoRef.current.paused) {
+          const videoTime = mainVideoRef.current.currentTime;
+          const activeClip = videoTrack.clips.find(
+            (c) => currentTimeRef.current >= c.start && currentTimeRef.current <= c.start + c.duration
+          ) || videoTrack.clips[0];
+
+          const actualCalculated = activeClip
+            ? activeClip.start + (videoTime - activeClip.inPoint) / (activeClip.speed || 1.0)
+            : videoTime;
+
+          if (!anchorTimeRef.current) {
+            anchorTimeRef.current = { perf: now, video: actualCalculated };
+          }
+
+          // Nội suy mượt mà 60fps từng mili-giây qua hardware monotonic clock
+          const elapsedSec = (now - anchorTimeRef.current.perf) / 1000;
+          let calculatedTime = anchorTimeRef.current.video + elapsedSec * (activeClip?.speed || 1.0);
+
+          // Nếu video thật bị lệch quá 50ms (do buffer, seek hoặc drop frame), nhẹ nhàng kéo anchor về lại
+          if (Math.abs(calculatedTime - actualCalculated) > 0.05) {
+            anchorTimeRef.current = { perf: now, video: actualCalculated };
+            calculatedTime = actualCalculated;
+          }
+
+          // TUYỆT ĐỐI DỪNG LẠI KHI HẾT CLIP VIDEO (Không bao giờ chạy quá ra khỏi video!)
+          if (calculatedTime >= project.duration) {
+            if (isLoop) {
+              handleSeek(0);
+              if (mainVideoRef.current) mainVideoRef.current.play().catch(() => {});
+            } else {
+              setIsPlaying(false);
+              setCurrentTime(project.duration);
+              if (mainVideoRef.current) mainVideoRef.current.pause();
+            }
+            return;
+          }
+
+          setCurrentTime(calculatedTime);
+          lastTimeRef.current = now;
+
+          // Tự động cuộn timeline theo Playhead (Auto-scroll) để kim không bị chạy mất tích
+          if (timelineScrollRef.current) {
+            const needleX = calculatedTime * zoomLevel;
+            const container = timelineScrollRef.current;
+            const visibleRight = container.scrollLeft + container.clientWidth;
+            if (needleX > visibleRight - 80 || needleX < container.scrollLeft) {
+              container.scrollLeft = Math.max(0, needleX - 120);
+            }
           }
         }
-        return next;
-      });
+      } else {
+        // 2. Timeline không có video (hoặc video đang tạm dừng):
+        const deltaSec = (now - lastTimeRef.current) / 1000;
+        lastTimeRef.current = now;
+
+        setCurrentTime((prev) => {
+          const next = prev + deltaSec;
+          if (next >= project.duration) {
+            if (isLoop) {
+              handleSeek(0);
+              return 0;
+            } else {
+              setIsPlaying(false);
+              return project.duration;
+            }
+          }
+          return next;
+        });
+
+        // Tự động cuộn timeline theo Playhead
+        if (timelineScrollRef.current) {
+          const needleX = currentTimeRef.current * zoomLevel;
+          const container = timelineScrollRef.current;
+          const visibleRight = container.scrollLeft + container.clientWidth;
+          if (needleX > visibleRight - 80 || needleX < container.scrollLeft) {
+            container.scrollLeft = Math.max(0, needleX - 120);
+          }
+        }
+      }
 
       animFrameRef.current = requestAnimationFrame(loop);
     };
@@ -1223,7 +1451,7 @@ function StudioProContent() {
     return () => {
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
     };
-  }, [isPlaying, project.duration, isLoop, currentTime, project.tracks]);
+  }, [isPlaying, isLoop, project.duration]);
 
   // Phím tắt bàn phím chuẩn NLE (Space: Play/Pause, S: Split, Delete: Xóa)
   useEffect(() => {
@@ -1376,6 +1604,7 @@ function StudioProContent() {
             const targetTrack = prev.tracks.find((t) => t.type === targetTrackType);
             if (!targetTrack) return prev;
 
+            const fileDuration = data.file?.duration || data.duration || 10.0;
             const newClip: TimelineClip = {
               id: `clip_${Date.now()}`,
               trackId: targetTrack.id,
@@ -1383,9 +1612,9 @@ function StudioProContent() {
               name: uploadedName,
               src: uploadedUrl,
               start: currentTime,
-              duration: 8.0,
+              duration: fileDuration,
               inPoint: 0,
-              outPoint: 8.0,
+              outPoint: fileDuration,
               speed: 1.0,
               volume: 1.0,
             };
@@ -1393,7 +1622,12 @@ function StudioProContent() {
             const updatedTracks = prev.tracks.map((t) =>
               t.id === targetTrack.id ? { ...t, clips: [...t.clips, newClip] } : t
             );
-            return { ...prev, tracks: updatedTracks };
+            const nextProjDur = Math.max(prev.duration, currentTime + fileDuration);
+            return {
+              ...prev,
+              duration: Number(nextProjDur.toFixed(2)),
+              tracks: updatedTracks,
+            };
           });
         }
       } catch (err) {
@@ -1425,12 +1659,20 @@ function StudioProContent() {
     return clip;
   }, [project, currentTime]);
 
-  // Video chính đang active tại thời điểm currentTime
+  // Video chính đang active tại thời điểm currentTime (vẫn nhận diện clip khi track ẩn để đồng bộ clock video)
   const activeMainVideo = React.useMemo(() => {
-    const videoTrack = project.tracks.find((t) => t.type === "main-video" && !t.isHidden);
+    const videoTrack = project.tracks.find((t) => t.type === "main-video");
     if (!videoTrack) return null;
     return videoTrack.clips.find((c) => currentTime >= c.start && currentTime <= c.start + c.duration) || null;
   }, [project, currentTime]);
+
+  // Clip video chính đại diện để mount thẻ <video> (luôn giữ thẻ video trong DOM để tải metadata và điều khiển clock)
+  const primaryMainVideo = React.useMemo(() => {
+    if (activeMainVideo) return activeMainVideo;
+    const videoTrack = project.tracks.find((t) => t.type === "main-video");
+    if (!videoTrack || videoTrack.clips.length === 0) return null;
+    return videoTrack.clips[0];
+  }, [activeMainVideo, project]);
 
   // Filter CSS của clip video đang active
   const activeFilterCss = React.useMemo(() => {
@@ -1571,53 +1813,18 @@ function StudioProContent() {
           </button>
         </div>
 
-        {/* Thanh bật/tắt nhanh 3 Panel (Sidebar, Timeline, Inspector) */}
-        <div className="hidden md:flex items-center space-x-1 bg-[#05130E] border border-[#10B981]/30 rounded-xl p-0.5">
-          <button
-            type="button"
-            onClick={() => setIsSidebarCollapsed((prev) => !prev)}
-            className={`px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 transition ${
-              !isSidebarCollapsed
-                ? "bg-[#143D2E] text-[#FFD200] border border-[#FFD200]/40 shadow-sm"
-                : "text-[#EBF8F2]/50 hover:text-white"
-            }`}
-            title={isSidebarCollapsed ? "Mở Sidebar công cụ (Trái)" : "Thu gọn Sidebar (Trái)"}
-          >
-            {isSidebarCollapsed ? <PanelLeftOpen className="w-3.5 h-3.5" /> : <PanelLeftClose className="w-3.5 h-3.5" />}
-            <span className="hidden xl:inline">Sidebar</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setIsTimelineCollapsed((prev) => !prev)}
-            className={`px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 transition ${
-              !isTimelineCollapsed
-                ? "bg-[#143D2E] text-[#FFD200] border border-[#FFD200]/40 shadow-sm"
-                : "text-[#EBF8F2]/50 hover:text-white"
-            }`}
-            title={isTimelineCollapsed ? "Mở Timeline (Dưới)" : "Thu gọn Timeline (Dưới)"}
-          >
-            <Layers className="w-3.5 h-3.5" />
-            <span className="hidden xl:inline">Timeline</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setIsInspectorCollapsed((prev) => !prev)}
-            className={`px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 transition ${
-              !isInspectorCollapsed
-                ? "bg-[#143D2E] text-[#FFD200] border border-[#FFD200]/40 shadow-sm"
-                : "text-[#EBF8F2]/50 hover:text-white"
-            }`}
-            title={isInspectorCollapsed ? "Mở Inspector thuộc tính (Phải)" : "Thu gọn Inspector (Phải)"}
-          >
-            {isInspectorCollapsed ? <PanelRightOpen className="w-3.5 h-3.5" /> : <PanelRightClose className="w-3.5 h-3.5" />}
-            <span className="hidden xl:inline">Inspector</span>
-          </button>
-        </div>
-
-        {/* Action Buttons: Lưu dự án & Render Xuất MP4 */}
+        {/* Action Buttons: Dự án mới, Lưu dự án & Render Xuất MP4 */}
         <div className="flex items-center space-x-2">
+          <button
+            type="button"
+            onClick={handleNewProject}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#0E291E] hover:bg-[#143D2E] text-xs font-bold text-[#EBF8F2]/80 hover:text-[#FFD200] border border-[#10B981]/25 transition cursor-pointer"
+            title="Tạo dự án mới (xóa trắng các track trên timeline)"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Dự Án Mới</span>
+          </button>
+
           <button
             type="button"
             onClick={handleSaveProject}
@@ -1839,7 +2046,7 @@ function StudioProContent() {
                           <div className="min-w-0 flex-1 pr-2">
                             <div className="text-xs font-bold text-white truncate">{v.title}</div>
                             <div className="text-[10px] text-[#EBF8F2]/50 font-mono">
-                              {v.sizeFormatted} • {v.source === "stock-uploads" ? "Stock PC" : "Output"}
+                              {v.sizeFormatted} • {v.duration && v.duration > 0 ? `${v.duration}s • ` : ""}{v.source === "stock-uploads" ? "Stock PC" : "Output"}
                             </div>
                           </div>
                           <button
@@ -1848,6 +2055,7 @@ function StudioProContent() {
                               // Thêm vào track video chính
                               const targetTrack = project.tracks.find((t) => t.type === "main-video");
                               if (!targetTrack) return;
+                              const clipDuration = v.duration && v.duration > 0 ? v.duration : 10.0;
                               const newClip: TimelineClip = {
                                 id: `clip_${Date.now()}`,
                                 trackId: targetTrack.id,
@@ -1855,15 +2063,17 @@ function StudioProContent() {
                                 name: v.title,
                                 src: v.url,
                                 start: currentTime,
-                                duration: 8.0,
+                                duration: clipDuration,
                                 inPoint: 0,
-                                outPoint: 8.0,
+                                outPoint: clipDuration,
                                 speed: 1.0,
                                 volume: 1.0,
                                 colorFilter: "none",
                               };
+                              const nextProjDur = Math.max(project.duration, currentTime + clipDuration);
                               setProject((prev) => ({
                                 ...prev,
+                                duration: Number(nextProjDur.toFixed(2)),
                                 tracks: prev.tracks.map((t) =>
                                   t.id === targetTrack.id ? { ...t, clips: [...t.clips, newClip] } : t
                                 ),
@@ -2946,35 +3156,56 @@ function StudioProContent() {
               )}
 
             {/* LỚP 2: VIDEO CHÍNH (MAIN VIDEO) */}
-            {activeMainVideo && activeMainVideo.src ? (
-              <video
-                ref={mainVideoRef}
-                src={activeMainVideo.src}
-                style={{
-                  filter: activeFilterCss,
-                  display: project.tracks.find((t) => t.type === "main-video")?.isHidden ? "none" : "block",
-                }}
-                muted={Boolean(project.tracks.find((t) => t.type === "main-video")?.isMuted)}
-                onClick={togglePlay}
-                playsInline
-                className="w-full h-full object-cover cursor-pointer transition-all duration-150"
-              />
+            {primaryMainVideo && primaryMainVideo.src ? (
+              <>
+                <video
+                  ref={mainVideoRef}
+                  src={primaryMainVideo.src}
+                  onLoadedMetadata={handleVideoLoadedMetadata}
+                  style={{
+                    filter: activeFilterCss,
+                    opacity:
+                      activeMainVideo && !project.tracks.find((t) => t.type === "main-video")?.isHidden ? 1 : 0,
+                    pointerEvents: activeMainVideo ? "auto" : "none",
+                  }}
+                  muted={Boolean(project.tracks.find((t) => t.type === "main-video")?.isMuted)}
+                  onClick={togglePlay}
+                  playsInline
+                  className="w-full h-full object-cover cursor-pointer transition-all duration-150"
+                />
+
+                {/* Thông báo khi video chính đang bị ẩn */}
+                {activeMainVideo && project.tracks.find((t) => t.type === "main-video")?.isHidden && (
+                  <div
+                    onClick={togglePlay}
+                    className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center text-center p-4 cursor-pointer text-[#EBF8F2]/60 z-10"
+                  >
+                    <EyeOff className="w-8 h-8 mb-2 text-red-400" />
+                    <span className="text-xs font-bold text-white">Track Video Chính đang bị ẩn</span>
+                    <span className="text-[10px] text-[#EBF8F2]/50 mt-1">Bấm biểu tượng mắt ở cột Track bên dưới để hiện lại</span>
+                  </div>
+                )}
+
+                {/* Thông báo khi playhead nằm ngoài đoạn có clip */}
+                {!activeMainVideo && (
+                  <div
+                    onClick={togglePlay}
+                    className="absolute inset-0 bg-[#081C15] flex flex-col items-center justify-center text-center p-4 cursor-pointer text-[#EBF8F2]/40"
+                  >
+                    <Film className="w-10 h-10 mb-2 text-[#10B981]/50 animate-pulse" />
+                    <span className="text-xs font-bold text-white">Chưa có video chính tại thời điểm này</span>
+                    <span className="text-[10px] text-[#EBF8F2]/60 mt-0.5">Kéo kim Playhead về đoạn có video clip</span>
+                  </div>
+                )}
+              </>
             ) : (
               <div
                 onClick={togglePlay}
                 className="w-full h-full bg-[#081C15] flex flex-col items-center justify-center text-center p-4 cursor-pointer text-[#EBF8F2]/40"
               >
                 <Film className="w-10 h-10 mb-2 text-[#10B981]/50 animate-pulse" />
-                <span className="text-xs font-bold text-white">
-                  {project.tracks.find((t) => t.type === "main-video")?.isHidden
-                    ? "Track Video Chính đang bị ẩn (Mắt Ẩn)"
-                    : "Chưa có video chính tại thời điểm này"}
-                </span>
-                <span className="text-[10px] text-[#EBF8F2]/60 mt-0.5">
-                  {project.tracks.find((t) => t.type === "main-video")?.isHidden
-                    ? "Bấm biểu tượng mắt ở cột Track bên dưới để hiện lại"
-                    : "Kéo thả video vào Track Video ở dưới"}
-                </span>
+                <span className="text-xs font-bold text-white">Chưa có video chính nào trên timeline</span>
+                <span className="text-[10px] text-[#EBF8F2]/60 mt-0.5">Kéo thả file vào hoặc chọn từ Kho Video & Stock</span>
               </div>
             )}
 
@@ -3636,8 +3867,11 @@ function StudioProContent() {
 
               {/* KIM CHỈ THỜI GIAN PLAYHEAD (NEEDLE & DRAG HANDLE) */}
               <div
-                className="absolute top-0 bottom-0 w-0.5 bg-[#FFD200] z-40 pointer-events-none transition-all duration-75 shadow-[0_0_8px_#FFD200]"
-                style={{ left: `${currentTime * zoomLevel}px` }}
+                className="absolute top-0 bottom-0 w-0.5 bg-[#FFD200] z-40 pointer-events-none shadow-[0_0_8px_#FFD200] will-change-transform"
+                style={{
+                  left: 0,
+                  transform: `translate3d(${currentTime * zoomLevel}px, 0, 0)`,
+                }}
               >
                 <div className="w-3 h-3 bg-[#FFD200] text-[#081C15] rotate-45 -translate-x-[5px] -translate-y-1 shadow flex items-center justify-center font-mono text-[7px] font-black" />
               </div>

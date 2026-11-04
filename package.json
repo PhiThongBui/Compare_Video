@@ -4,6 +4,10 @@
   "type": "module",
   "private": true,
   "scripts": {
+    "dev": "npm run dev --prefix dashboard",
+    "build": "npm run build --prefix dashboard",
+    "start": "npm run start --prefix dashboard",
+    "lint": "npm run lint --prefix dashboard",
     "make": "node make-video.mjs",
     "podcast": "node make-podcast.mjs",
     "broll": "node make-broll-video.mjs",

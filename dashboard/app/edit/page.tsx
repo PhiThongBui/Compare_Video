@@ -211,11 +211,11 @@ function VideoEditorContent() {
     }
   };
 
-  // Quét thư mục video trên ổ cứng máy tính
+  // Quét thư mục hoặc thêm file video trên ổ cứng máy tính
   const handleScanLocalFolder = async () => {
     const targetFolder = localFolderInput.trim().replace(/^["']+|["']+$/g, "");
     if (!targetFolder) {
-      alert("Vui lòng nhập đường dẫn thư mục trên máy tính");
+      alert("Vui lòng nhập đường dẫn thư mục hoặc file video trên máy tính");
       return;
     }
 
@@ -228,12 +228,12 @@ function VideoEditorContent() {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Không thể quét thư mục");
+      if (!res.ok) throw new Error(data.error || "Không thể quét đường dẫn");
 
       setScannedFiles(data.files || []);
       setShowFolderScanner(true);
       if ((data.files || []).length === 0) {
-        alert(`Đã quét thư mục "${targetFolder}" nhưng không tìm thấy video nào (.mp4, .mov, .webm, .mkv)`);
+        alert("Không tìm thấy video nào (.mp4, .mov, .webm, .mkv) tại đường dẫn đã nhập");
       }
     } catch (err: unknown) {
       const error = err as Error;
@@ -1536,18 +1536,18 @@ function VideoEditorContent() {
                       </div>
                     </div>
 
-                    {/* Khung Quét Thư Mục Máy Tính (hiển thị khi bấm Quét Thư Mục) */}
+                    {/* Khung Quét Thư Mục / Thêm File Máy Tính (hiển thị khi bấm Quét Thư Mục) */}
                     {showFolderScanner && (
                       <div className="p-3 rounded-xl bg-[#071912] border border-[#10B981]/40 space-y-2 animate-in fade-in">
                         <label className="text-[10px] text-[#EBF8F2]/70 font-bold uppercase tracking-wider block">
-                          Nhập thư mục video trên máy (vd: C:\Users\BUI TUAN DAT\Videos hoặc D:\Stock):
+                          Nhập đường dẫn file video hoặc thư mục (vd: C:\Videos\clip.mp4 hoặc D:\Stock):
                         </label>
                         <div className="flex gap-1.5">
                           <input
                             type="text"
                             value={localFolderInput}
                             onChange={(e) => setLocalFolderInput(e.target.value.replace(/^["']+|["']+$/g, ""))}
-                            placeholder="vd: C:\Users\BUI TUAN DAT\Videos\Youtube"
+                            placeholder="Dán file (Copy as path) hoặc đường dẫn thư mục..."
                             className="flex-1 bg-[#05130D] border border-[#10B981]/40 rounded-xl px-3 py-1.5 text-xs text-white placeholder-[#EBF8F2]/30 focus:outline-none focus:border-[#FFD200] font-mono"
                           />
                           <button
@@ -1561,7 +1561,7 @@ function VideoEditorContent() {
                             ) : (
                               <Search className="w-3.5 h-3.5" />
                             )}
-                            <span>Quét</span>
+                            <span>Thêm / Quét</span>
                           </button>
                         </div>
 

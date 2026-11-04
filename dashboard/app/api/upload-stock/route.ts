@@ -1,6 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import fs from "node:fs";
 import path from "node:path";
+import { execSync } from "node:child_process";
+
+function getMediaDuration(filePath: string): number {
+  try {
+    const raw = execSync(
+      `ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${filePath}"`,
+      { encoding: "utf-8", timeout: 2000 }
+    ).trim();
+    const dur = parseFloat(raw);
+    return isFinite(dur) ? Number(dur.toFixed(2)) : 0;
+  } catch {
+    return 0;
+  }
+}
 
 function getRootDir(): string {
   const current = process.cwd();
@@ -60,24 +74,46 @@ export async function GET(req: NextRequest) {
     const entries = fs.readdirSync(uploadDir);
     const files = [];
     let totalBytes = 0;
+    const requestedType = url.searchParams.get("type"); // "video" | "audio"
 
     for (const entry of entries) {
       const fullPath = path.join(uploadDir, entry);
       try {
         const stat = fs.statSync(fullPath);
         if (stat.isFile()) {
+          const ext = path.extname(entry).toLowerCase();
+
+          // Tuyệt đối không lấy file json, txt hay file ẩn
+          if (ext === ".json" || ext === ".txt" || entry.startsWith(".")) {
+            continue;
+          }
+
+          // Lọc theo loại nếu có yêu cầu
+          const isVideo = [".mp4", ".webm", ".mov", ".mkv"].includes(ext);
+          const isAudio = [".mp3", ".wav", ".ogg", ".m4a", ".aac"].includes(ext);
+
+          if (requestedType === "video" && !isVideo) {
+            continue;
+          }
+          if (requestedType === "audio" && !isAudio) {
+            continue;
+          }
+
           totalBytes += stat.size;
           // Tên hiển thị thân thiện (bỏ tiền tố timestamp vd 1793434973754-abc.mp4 -> abc.mp4)
           const friendlyName = entry.replace(/^\d+-/, "");
+          const duration = (isVideo || isAudio) ? getMediaDuration(fullPath) : 0;
           files.push({
             name: entry,
             displayName: friendlyName,
             path: fullPath,
             sizeBytes: stat.size,
             sizeFormatted: `${(stat.size / 1024 / 1024).toFixed(2)} MB`,
+            duration,
             createdAt: stat.mtimeMs,
             createdDate: new Date(stat.mtimeMs).toLocaleString("vi-VN"),
             previewUrl: `/api/upload-stock?filename=${encodeURIComponent(entry)}&stream=1`,
+            mediaType: isVideo ? "video" : isAudio ? "audio" : "other",
           });
         }
       } catch {}

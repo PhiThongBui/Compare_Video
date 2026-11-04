@@ -338,8 +338,11 @@ function toSlug(text: string): string {
 
 function autoHighlightKeywords(sentence: string, keywords: string[]): { tts: string; caption: string } {
   const plainText = sentence.replace(/<[^>]+>/g, "").trim();
+  // Văn bản hiển thị phụ đề trên màn hình: lọc bỏ các thẻ kỹ thuật [nghỉ Ns], [cười], [thở dài]...
+  const cleanCaptionText = plainText.replace(/\[[^\]]+\]/g, "").replace(/\s+/g, " ").trim();
+
   if (!keywords || keywords.length === 0) {
-    return { tts: plainText, caption: plainText };
+    return { tts: plainText, caption: cleanCaptionText };
   }
 
   // Sắp xếp các từ khóa theo độ dài giảm dần để từ dài được bọc thẻ trước
@@ -349,14 +352,14 @@ function autoHighlightKeywords(sentence: string, keywords: string[]): { tts: str
     .sort((a, b) => b.length - a.length);
 
   if (validKeywords.length === 0) {
-    return { tts: plainText, caption: plainText };
+    return { tts: plainText, caption: cleanCaptionText };
   }
 
   const escapeRegex = (str: string) => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const pattern = new RegExp(`(${validKeywords.map(escapeRegex).join("|")})`, "gi");
 
-  // Tự động bọc thẻ màu vàng chuẩn cho các keyword
-  const highlightedCaption = plainText.replace(
+  // Tự động bọc thẻ màu vàng chuẩn cho các keyword trên caption sạch
+  const highlightedCaption = cleanCaptionText.replace(
     pattern,
     '<span class="kw" style="color: var(--accent-yellow)">$1</span>'
   );
